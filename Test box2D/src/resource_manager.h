@@ -8,7 +8,7 @@
 
 #include "texture.h"
 #include "sprite_renderer.h"
-#include <shader.hpp>
+#include "shader.hpp"
 
 // A static singleton ResourceManager class that hosts several
 // functions to load Textures and Shaders. Each loaded texture

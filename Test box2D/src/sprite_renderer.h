@@ -1,7 +1,7 @@
 #ifndef SPRITE_RENDERER_H
 #define SPRITE_RENDERER_H
 
-#include <shader.hpp>
+#include "shader.hpp"
 #include "texture.h"
 #include <glm/glm.hpp>
 
