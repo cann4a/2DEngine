@@ -18,6 +18,15 @@
 #include "framebuffer.h"
 #include "simulation_manager.h"
 
+namespace MyShape
+{
+    struct Shape {
+        ImVec2 p1;
+        ImVec2 p2;
+        ImVec4 color;
+    };
+}
+
 
 // screen dimentions
 const unsigned int SCREEN_WIDTH = 1200;
@@ -189,7 +198,6 @@ int main(int argc, char* argv[])
             simulationManager.enableGravity();
 
         ImGui::ColorEdit3("background color", (float*)&clearColor);
-        ImGui::ColorEdit3("shape color", (float*)&shapeColor);
         ImGui::InputInt("Number of boxes", &simulationManager.boxNumber);
 
         ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
@@ -274,7 +282,7 @@ int main(int argc, char* argv[])
         // canvas for drawing shapes 
         style.WindowPadding = ref_saved_style.WindowPadding;
         ImGui::Begin("Canvas");
-        static std::map<int, ImVector<ImVec2>> points;
+        static std::map<int, ImVector<MyShape::Shape>> pts;
         static ImVec2 scrolling(0.0f, 0.0f);
         static bool opt_enable_grid = true;
         static bool opt_enable_context_menu = true;
@@ -286,6 +294,7 @@ int main(int argc, char* argv[])
         ImGui::Checkbox("Enable grid", &opt_enable_grid);
         ImGui::Checkbox("Enable context menu", &opt_enable_context_menu);
         ImGui::Text("Mouse Left: drag to add lines,\nMouse Right: drag to scroll, click for context menu.");
+        ImGui::ColorEdit3("shape color", (float*)&shapeColor); 
         ImGui::Combo("Shape selection", &current_item, items, IM_ARRAYSIZE(items));
 
         // Typically you would use a BeginChild()/EndChild() pair to benefit from a clipping region + own scrolling.
@@ -322,17 +331,16 @@ int main(int argc, char* argv[])
         // Add first and second point
         if (is_hovered && !adding_line && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
         {
-            points[current_item].push_back(mouse_pos_in_canvas);
-            points[current_item].push_back(mouse_pos_in_canvas);
+            MyShape::Shape shape = {mouse_pos_in_canvas, mouse_pos_in_canvas, shapeColor};
+            pts[current_item].push_back(shape);
             adding_line = true;
         }
         if (adding_line)
         {
-            points[current_item].back() = mouse_pos_in_canvas;
+            pts[current_item].back().p2 = mouse_pos_in_canvas;
             if (!ImGui::IsMouseDown(ImGuiMouseButton_Left))
                 adding_line = false;
         }
-
         // Pan (we use a zero mouse threshold when there's no context menu)
         // You may decide to make that threshold dynamic based on whether the mouse is hovering something etc.
         const float mouse_threshold_for_pan = opt_enable_context_menu ? -1.0f : 0.0f;
@@ -349,13 +357,15 @@ int main(int argc, char* argv[])
         if (ImGui::BeginPopup("context"))
         {
             if (adding_line)
-                points[current_item].resize(points.size() - 2);
+                pts[current_item].resize(pts.size() - 1);
             adding_line = false;
-            if (ImGui::MenuItem("Remove one", NULL, false, points[current_item].Size > 0)) { points[current_item].resize(points[current_item].size() - 2); }
-            if (ImGui::MenuItem("Remove all", NULL, false, points.size() > 0)) 
+            if (ImGui::MenuItem("Remove one", NULL, false, pts[current_item].Size > 0)) { pts[current_item].resize(pts[current_item].size() - 1); }
+
+            if (ImGui::MenuItem("Remove all", NULL, false, pts.size() > 0))
             { 
-                std::map<int, ImVector<ImVec2>>::iterator it;
-                for (it = points.begin(); it != points.end(); it++)
+                std::map<int, ImVector<MyShape::Shape>>::iterator it;
+                //for (it = points.begin(); it != points.end(); it++)
+                for (it = pts.begin(); it != pts.end(); it++)
                     it->second.clear();
             }
             ImGui::EndPopup();
@@ -374,23 +384,24 @@ int main(int argc, char* argv[])
             draw_list->AddLine(ImVec2(origin.x - 10.0f, origin.y), ImVec2(origin.x + 10.0f, origin.y), IM_COL32(255, 0, 0, 255));
             draw_list->AddLine(ImVec2(origin.x, origin.y - 10.0f ), ImVec2(origin.x, origin.y + 10.0f), IM_COL32(255, 0, 0, 255));
         }
-        std::map<int, ImVector<ImVec2>>::iterator it;
-        for (it = points.begin(); it != points.end(); it++)
+        std::map<int, ImVector<MyShape::Shape>>::iterator it;
+        for (it = pts.begin(); it != pts.end(); it++)
         {
-            for (int n = 0; n < it->second.Size; n += 2)
-            {
-                switch (it->first)
-                {
-                case 0:
-                    draw_list->AddLine(ImVec2(origin.x + points[0][n].x, origin.y + points[0][n].y), ImVec2(origin.x + points[0][n + 1].x, origin.y + points[0][n + 1].y), ImGui::ColorConvertFloat4ToU32(shapeColor), 2.0f);
-                    break;
-                case 1:
-                    draw_list->AddRect(ImVec2(origin.x + points[1][n].x, origin.y + points[1][n].y), ImVec2(origin.x + points[1][n + 1].x, origin.y + points[1][n + 1].y), ImGui::ColorConvertFloat4ToU32(shapeColor));
-                    break;
-                case 2:
-                    draw_list->AddCircle(ImVec2(origin.x + points[2][n].x, origin.y + points[2][n].y), sqrt(pow(points[2][n].x - points[2][n + 1].x, 2) + pow(points[2][n].y - points[2][n + 1].y, 2)), ImGui::ColorConvertFloat4ToU32(shapeColor));
-                }
-            }
+           for (int n = 0; n < it->second.Size; n ++)
+           {
+               switch (it->first)
+               {
+               case 0:
+                   draw_list->AddLine(ImVec2(origin.x + pts[0][n].p1.x, origin.y + pts[0][n].p1.y), ImVec2(origin.x + pts[0][n].p2.x, origin.y + pts[0][n].p2.y), ImGui::ColorConvertFloat4ToU32(pts[0][n].color), 2.0f);
+                   break;
+               case 1:
+                   draw_list->AddRect(ImVec2(origin.x + pts[1][n].p1.x, origin.y + pts[1][n].p1.y), ImVec2(origin.x + pts[1][n].p2.x, origin.y + pts[1][n].p2.y), ImGui::ColorConvertFloat4ToU32(pts[1][n].color));
+                   break;
+               case 2:
+                   draw_list->AddCircle(ImVec2(origin.x + pts[2][n].p1.x, origin.y + pts[2][n].p1.y), sqrt(pow(pts[2][n].p1.x - pts[2][n].p2.x, 2) + pow(pts[2][n].p1.y - pts[2][n].p2.y, 2)), ImGui::ColorConvertFloat4ToU32(pts[2][n].color));
+               }
+           }
+
         }
         draw_list->PopClipRect();
         ImGui::End();
