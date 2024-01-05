@@ -4,8 +4,14 @@
 #include <map>
 #include "resource_manager.h"
 
-SimulationManager::SimulationManager(float RENDER_SCALE, unsigned int SCREEN_WIDTH, unsigned int SCREEN_HEIGHT) 
+
+
+SimulationManager::SimulationManager(const float RENDER_SCALE, const unsigned int SCREEN_WIDTH, const unsigned int SCREEN_HEIGHT)
 {
+    this->RENDER_SCALE = RENDER_SCALE;
+    this->SCREEN_WIDTH = SCREEN_WIDTH;
+    this->SCREEN_HEIGHT = SCREEN_HEIGHT;
+
     gravityOn = true;
 	m_gravity = b2Vec2(0.0f, 10.0f);
 	m_world = new b2World(m_gravity);
@@ -66,4 +72,36 @@ SimulationManager::~SimulationManager()
 {
     delete m_world;
 }
+
+void SimulationManager::generateRandomBox(const int boxNumber) 
+{
+    // random generator for boxes positions
+    std::uniform_real_distribution<float> xPos(100 / RENDER_SCALE, (SCREEN_WIDTH - 100) / RENDER_SCALE); std::uniform_real_distribution<float> yPos(0.0f, 10.0f);
+    std::uniform_real_distribution<float> size(0.5f, 2.5f);
+    std::uniform_real_distribution<float> rotation(0.0f, 45.0f);
+
+    std::uniform_real_distribution<float> r(0.0f, 1.0f); std::uniform_real_distribution<float> g(0.0f, 1.0f); std::uniform_real_distribution<float> b(0.0f, 1.0f);
+
+    // boxes creation
+    for (int i = 0; i < boxNumber; i++)
+    {
+        Box newBox;
+        newBox.init(m_world, glm::vec2(xPos(randGenerator), yPos(randGenerator)), glm::vec2(size(randGenerator), size(randGenerator)));
+        newBox.setRotation(glm::radians(rotation(randGenerator)));
+        newBox.setColor(glm::vec3(r(randGenerator), g(randGenerator), b(randGenerator)));
+        m_boxes.push_back(newBox);
+    }
+}
+
+void SimulationManager::renderBoxes() 
+{
+    
+}
+
+void SimulationManager::initRandomGeneration() 
+{
+    
+   
+}
+
 

@@ -38,12 +38,9 @@ const float TARGET_FPS = 60.0f;
 
 FrameBuffer sceneBuffer = FrameBuffer(); 
 SimulationManager simulationManager = SimulationManager(RENDER_SCALE, SCREEN_WIDTH, SCREEN_HEIGHT);
-bool render = false;
-bool reset = false;
-bool populate = true;
-bool simulate = true;
 
 ImVec4 clearColor = ImVec4(0.3f, 0.4f, 0.8f, 1.0f);
+ImVec4 shapeColor = ImVec4(1.0f, 0.0f, 0.5f, 1.0f);
 float titleOffset = 20.0f;
 bool mouseKeys[3];
 bool mouseKeysProcessed[3];
@@ -88,6 +85,8 @@ int main(int argc, char* argv[])
 
     double lastTime = glfwGetTime();
     SpriteRenderer* renderer = new SpriteRenderer(ResourceManager::getShader("sprite"));
+
+
     // GUI initialization
     // --------
     IMGUI_CHECKVERSION();
@@ -125,14 +124,6 @@ int main(int argc, char* argv[])
     renderingWindowFlags |= ImGuiWindowFlags_NoScrollbar;
     renderingWindowFlags |= ImGuiWindowFlags_NoTitleBar;*/
 
-    // Box2D world initialization
-    // --------------------------
-
-    //b2Vec2 gravity(0.0f, 10.0f);
-    //b2World* m_world = new b2World(gravity);
-    
-    // walls 
-
     // map connecting wall position and dimensions ---> map<position, dimension>
     std::map<std::vector<float>, std::vector<float>> wallsData = 
     {
@@ -159,16 +150,6 @@ int main(int argc, char* argv[])
     // buffer initialization for rendering the simulation
     sceneBuffer.init(SCREEN_WIDTH, SCREEN_HEIGHT);
 
-    int num_boxes = 20;
-    static std::vector<Box> m_boxes;
-    // random generator for boxes positions
-    std::mt19937 randGenerator;
-    std::uniform_real_distribution<float> xPos(100 / RENDER_SCALE, (SCREEN_WIDTH - 100) / RENDER_SCALE); std::uniform_real_distribution<float> yPos(0.0f, 10.0f);
-    std::uniform_real_distribution<float> size(0.5f, 2.5f);
-    std::uniform_real_distribution<float> rotation(0.0f, 45.0f);
-
-    std::uniform_real_distribution<float> r(0.0f, 1.0f); std::uniform_real_distribution<float> g(0.0f, 1.0f); std::uniform_real_distribution<float> b(0.0f, 1.0f);
-
     while (!glfwWindowShouldClose(window)) 
     {
         glfwPollEvents();
@@ -186,30 +167,30 @@ int main(int argc, char* argv[])
         ImGui::Begin("Control");
         if (ImGui::Button("Play")) 
         {
-            render = true;
-            simulate = true;
-            reset = false;
+            simulationManager.render = true;
+            simulationManager.simulate = true;
+            simulationManager.reset = false;
             //populate = true;
         }
         ImGui::SameLine();
         if (ImGui::Button("Stop"))
         {
-            simulate = false;
+            simulationManager.simulate = false;
         }
        
-
         if (ImGui::Button("Reset")) 
         {
-            reset = true;
-            render = false;
-            populate = true;
+            simulationManager.reset = true;
+            simulationManager.render = false;
+            simulationManager.populate = true;
         }
         ImGui::SameLine(ImGui::GetWindowWidth() - 130.0f);
         if (ImGui::Checkbox("Enable gravity", &simulationManager.gravityOn))
             simulationManager.enableGravity();
 
         ImGui::ColorEdit3("background color", (float*)&clearColor);
-        ImGui::InputInt("Number of boxes", &num_boxes);
+        ImGui::ColorEdit3("shape color", (float*)&shapeColor);
+        ImGui::InputInt("Number of boxes", &simulationManager.boxNumber);
 
         ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
         ImGui::End();
@@ -220,9 +201,9 @@ int main(int argc, char* argv[])
         ImGui::SetNextWindowSize(ImVec2(2 * SCREEN_WIDTH / 3, 2 * SCREEN_HEIGHT / 3), ImGuiCond_Once);
         style.WindowPadding = ImVec2(0.0f, 0.0f);
         ImGui::Begin("Rendering", nullptr, renderingWindowFlags);
-        if (reset)
+        if (simulationManager.reset)
         {
-            m_boxes.clear();
+           simulationManager.m_boxes.clear();
             // deletes all the dynamic objects inside the world
             for (b2Body* b = simulationManager.m_world->GetBodyList(); b != nullptr;)
             {
@@ -242,20 +223,13 @@ int main(int argc, char* argv[])
                 m_boxes.push_back(newBox);
             }*/
         }
-        if (render) 
+        if (simulationManager.render)
         {
-            if (populate) 
+            if (simulationManager.populate)
             {
-                // boxes creation
-                for (int i = 0; i < num_boxes; i++) 
-                {
-                    Box newBox;
-                    newBox.init(simulationManager.m_world, glm::vec2(xPos(randGenerator), yPos(randGenerator)), glm::vec2(size(randGenerator), size(randGenerator)));
-                    newBox.setRotation(glm::radians(rotation(randGenerator)));
-                    newBox.setColor(glm::vec3(r(randGenerator), g(randGenerator), b(randGenerator)));
-                    m_boxes.push_back(newBox);
-                }
-                populate = false;
+                simulationManager.generateRandomBox(simulationManager.boxNumber);
+
+                simulationManager.populate = false;
             }
             ImGui::Image(
                 (ImTextureID)sceneBuffer.getFrameTexture(),
@@ -269,15 +243,16 @@ int main(int argc, char* argv[])
                     glClear(GL_COLOR_BUFFER_BIT);
                     processInput("Rendering", renderer);
 
-                    for (auto& box : m_boxes) 
+                    for (auto& box : simulationManager.m_boxes)
                     {
                         glm::vec2 pos = glm::vec2(box.getBody()->GetPosition().x, box.getBody()->GetPosition().y);
                         glm::vec2 size = box.getDimensions();
                         renderer->drawSpriteBox2D(RENDER_SCALE, ResourceManager::getTexture("container"), pos, size, glm::degrees(box.getBody()->GetAngle()), box.getColor());
                     }
+
                     sceneBuffer.unbind();
                     // perform a step in the simulation
-                    if (simulate)
+                    if (simulationManager.simulate)
                         simulationManager.m_world->Step(1.0f / 60.0f, 6, 2);
         }
         else
@@ -307,6 +282,7 @@ int main(int argc, char* argv[])
         
         static int current_item = 0;
         const char* items[] = { "Line", "Rectangle", "Circle" };
+
         ImGui::Checkbox("Enable grid", &opt_enable_grid);
         ImGui::Checkbox("Enable context menu", &opt_enable_context_menu);
         ImGui::Text("Mouse Left: drag to add lines,\nMouse Right: drag to scroll, click for context menu.");
@@ -406,25 +382,22 @@ int main(int argc, char* argv[])
                 switch (it->first)
                 {
                 case 0:
-                    draw_list->AddLine(ImVec2(origin.x + points[0][n].x, origin.y + points[0][n].y), ImVec2(origin.x + points[0][n + 1].x, origin.y + points[0][n + 1].y), IM_COL32(255, 255, 0, 255), 2.0f);
+                    draw_list->AddLine(ImVec2(origin.x + points[0][n].x, origin.y + points[0][n].y), ImVec2(origin.x + points[0][n + 1].x, origin.y + points[0][n + 1].y), ImGui::ColorConvertFloat4ToU32(shapeColor), 2.0f);
                     break;
                 case 1:
-                    draw_list->AddRect(ImVec2(origin.x + points[1][n].x, origin.y + points[1][n].y), ImVec2(origin.x + points[1][n + 1].x, origin.y + points[1][n + 1].y), IM_COL32(255, 0, 255, 255));
+                    draw_list->AddRect(ImVec2(origin.x + points[1][n].x, origin.y + points[1][n].y), ImVec2(origin.x + points[1][n + 1].x, origin.y + points[1][n + 1].y), ImGui::ColorConvertFloat4ToU32(shapeColor));
                     break;
                 case 2:
-                    draw_list->AddCircle(ImVec2(origin.x + points[2][n].x, origin.y + points[2][n].y), sqrt(pow(points[2][n].x - points[2][n + 1].x, 2) + pow(points[2][n].y - points[2][n + 1].y, 2)), IM_COL32(255, 255, 0, 255));
+                    draw_list->AddCircle(ImVec2(origin.x + points[2][n].x, origin.y + points[2][n].y), sqrt(pow(points[2][n].x - points[2][n + 1].x, 2) + pow(points[2][n].y - points[2][n + 1].y, 2)), ImGui::ColorConvertFloat4ToU32(shapeColor));
                 }
             }
         }
         draw_list->PopClipRect();
         ImGui::End();
        
-
         ImGui::ShowDemoWindow();
         ImGui::Render();
-        int display_w, display_h;
-        glfwGetFramebufferSize(window, &display_w, &display_h);
-        glViewport(0, 0, display_w, display_h);
+
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
