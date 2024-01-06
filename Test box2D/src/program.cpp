@@ -18,6 +18,8 @@
 #include "framebuffer.h"
 #include "simulation_manager.h"
 
+// structure for hloding shape data for drawing
+// p1: top-left corner, p2: bottom-right corner, color: shape color
 namespace MyShape
 {
     struct Shape {
@@ -27,32 +29,35 @@ namespace MyShape
     };
 }
 
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
+void window_size_callback_static(GLFWwindow* window, int width, int height);
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
+void limitFPS(double* lastTime, float targetFPS);
+bool hoverImGUIWindow(const char* windowName);
+
+void showFileOpen();
+void showFileSave();
 
 // screen dimentions
 const unsigned int SCREEN_WIDTH = 1200;
 const unsigned int SCREEN_HEIGHT = 800;
-
-bool keys[1024];
-bool keysProcessed[1024];
-
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
-void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
-void processInput(const char* renderWindowName, SpriteRenderer* renderer);
-void limitFPS(double* lastTime, float targetFPS);
-void window_size_callback_static(GLFWwindow* window, int width, int height);
-bool hoverImGUIWindow(const char* windowName);
-
 const float RENDER_SCALE = 30.0f;
 const float TARGET_FPS = 60.0f;
 
-FrameBuffer sceneBuffer = FrameBuffer(); 
-SimulationManager simulationManager = SimulationManager(RENDER_SCALE, SCREEN_WIDTH, SCREEN_HEIGHT);
-
-ImVec4 clearColor = ImVec4(0.3f, 0.4f, 0.8f, 1.0f);
-ImVec4 shapeColor = ImVec4(1.0f, 0.0f, 0.5f, 1.0f);
-float titleOffset = 20.0f;
+// Arrays for storing pressed and processed keys
+bool keys[1024];
+bool keysProcessed[1024];
 bool mouseKeys[3];
 bool mouseKeysProcessed[3];
+
+// Flags for canvas menu
+bool show_file_open = false;
+bool show_file_save = false;
+
+// Instanciate a custom framebuffer and a simulation manager. The former is used for rendering the simultation, while the latter
+// manages the simulation objects and parameters 
+FrameBuffer sceneBuffer = FrameBuffer();
+SimulationManager simulationManager = SimulationManager(RENDER_SCALE, SCREEN_WIDTH, SCREEN_HEIGHT);
 
 int main(int argc, char* argv[]) 
 {
@@ -82,7 +87,6 @@ int main(int argc, char* argv[])
     glfwSetMouseButtonCallback(window, mouse_button_callback);
 
     // load shaders
-
     ResourceManager::loadShader("shaders source/vertex.vs", "shaders source/fragment.fs", nullptr, "sprite");
     ResourceManager::loadTexture("textures/container.jpg", false, "container");
     ResourceManager::getTexture("container");
@@ -94,7 +98,6 @@ int main(int argc, char* argv[])
 
     double lastTime = glfwGetTime();
     SpriteRenderer* renderer = new SpriteRenderer(ResourceManager::getShader("sprite"));
-
 
     // GUI initialization
     // --------
@@ -126,12 +129,15 @@ int main(int argc, char* argv[])
     ImGui_ImplOpenGL3_Init("#version 330");
     
     ImGuiWindowFlags renderingWindowFlags = 0;
+    ImGuiWindowFlags canvasWindowFlags = 0;
 
     /*renderingWindowFlags |= ImGuiWindowFlags_NoResize;
     renderingWindowFlags |= ImGuiWindowFlags_NoMove;
     renderingWindowFlags |= ImGuiWindowFlags_NoCollapse;
     renderingWindowFlags |= ImGuiWindowFlags_NoScrollbar;
     renderingWindowFlags |= ImGuiWindowFlags_NoTitleBar;*/
+
+    canvasWindowFlags |= ImGuiWindowFlags_MenuBar;
 
     // map connecting wall position and dimensions ---> map<position, dimension>
     std::map<std::vector<float>, std::vector<float>> wallsData = 
@@ -154,10 +160,12 @@ int main(int argc, char* argv[])
         groundBody->CreateFixture(&groundBox, 0.0f);
     }
 
-    bool p_open = true;
-   
     // buffer initialization for rendering the simulation
     sceneBuffer.init(SCREEN_WIDTH, SCREEN_HEIGHT);
+
+    // ImGUI initial color settings
+    ImVec4 clearColor = ImVec4(0.3f, 0.4f, 0.8f, 1.0f);
+    ImVec4 shapeColor = ImVec4(1.0f, 0.0f, 0.5f, 1.0f);
 
     while (!glfwWindowShouldClose(window)) 
     {
@@ -218,7 +226,6 @@ int main(int argc, char* argv[])
                 b2Body* next = b->GetNext();
                 if (b->GetType() == b2_dynamicBody)
                     simulationManager.m_world->DestroyBody(b);
-                    //simulationManager.m_world->DestroyBody(b);
                 b = next;
             }
             /* regenerates the boxes
@@ -236,7 +243,6 @@ int main(int argc, char* argv[])
             if (simulationManager.populate)
             {
                 simulationManager.generateRandomBox(simulationManager.boxNumber);
-
                 simulationManager.populate = false;
             }
             ImGui::Image(
@@ -249,7 +255,6 @@ int main(int argc, char* argv[])
                     sceneBuffer.bind();
                     glClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
                     glClear(GL_COLOR_BUFFER_BIT);
-                    processInput("Rendering", renderer);
 
                     for (auto& box : simulationManager.m_boxes)
                     {
@@ -281,32 +286,38 @@ int main(int argc, char* argv[])
 
         // canvas for drawing shapes 
         style.WindowPadding = ref_saved_style.WindowPadding;
-        ImGui::Begin("Canvas");
+        ImGui::Begin("Canvas", nullptr, canvasWindowFlags);
+
+        if (show_file_open) showFileOpen();
+        if (show_file_save) showFileSave();
+
+        // Canvas variables initialization
         static std::map<int, ImVector<MyShape::Shape>> pts;
         static ImVec2 scrolling(0.0f, 0.0f);
         static bool opt_enable_grid = true;
         static bool opt_enable_context_menu = true;
         static bool adding_line = false;
-        
         static int current_item = 0;
         const char* items[] = { "Line", "Rectangle", "Circle" };
+
+        // Menu
+        if (ImGui::BeginMenuBar())
+        {
+            if (ImGui::BeginMenu("File"))
+            {
+                ImGui::MenuItem("Open", NULL, &show_file_open);
+                ImGui::MenuItem("Save", NULL, &show_file_save);
+
+                ImGui::EndMenu();
+            }
+            ImGui::EndMenuBar();
+        }
 
         ImGui::Checkbox("Enable grid", &opt_enable_grid);
         ImGui::Checkbox("Enable context menu", &opt_enable_context_menu);
         ImGui::Text("Mouse Left: drag to add lines,\nMouse Right: drag to scroll, click for context menu.");
         ImGui::ColorEdit3("shape color", (float*)&shapeColor); 
         ImGui::Combo("Shape selection", &current_item, items, IM_ARRAYSIZE(items));
-
-        // Typically you would use a BeginChild()/EndChild() pair to benefit from a clipping region + own scrolling.
-        // Here we demonstrate that this can be replaced by simple offsetting + custom drawing + PushClipRect/PopClipRect() calls.
-        // To use a child window instead we could use, e.g:
-        //      ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));      // Disable padding
-        //      ImGui::PushStyleColor(ImGuiCol_ChildBg, IM_COL32(50, 50, 50, 255));  // Set a background color
-        //      ImGui::BeginChild("canvas", ImVec2(0.0f, 0.0f), ImGuiChildFlags_Border, ImGuiWindowFlags_NoMove);
-        //      ImGui::PopStyleColor();
-        //      ImGui::PopStyleVar();
-        //      [...]
-        //      ImGui::EndChild();
 
         // Using InvisibleButton() as a convenience 1) it will advance the layout cursor and 2) allows us to use IsItemHovered()/IsItemActive()
         ImVec2 canvas_p0 = ImGui::GetCursorScreenPos();      // ImDrawList API uses screen coordinates!
@@ -401,7 +412,6 @@ int main(int argc, char* argv[])
                    draw_list->AddCircle(ImVec2(origin.x + pts[2][n].p1.x, origin.y + pts[2][n].p1.y), sqrt(pow(pts[2][n].p1.x - pts[2][n].p2.x, 2) + pow(pts[2][n].p1.y - pts[2][n].p2.y, 2)), ImGui::ColorConvertFloat4ToU32(pts[2][n].color));
                }
            }
-
         }
         draw_list->PopClipRect();
         ImGui::End();
@@ -428,6 +438,7 @@ int main(int argc, char* argv[])
     return 0;
 }
 
+// Registers the keys inputs
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode) 
 {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
@@ -444,6 +455,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     }
 }
 
+// Registers the mouse inputs
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) 
 {
     if (button == GLFW_MOUSE_BUTTON_LEFT || button == GLFW_MOUSE_BUTTON_RIGHT) 
@@ -458,10 +470,6 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
     }
 }
 
-void processInput(const char* renderWindowName, SpriteRenderer* renderer) 
-{
-    
-}
 // limits the FPS of the application to targetFPS
 void limitFPS(double* lastTime, const float targetFPS) 
 {
@@ -469,14 +477,32 @@ void limitFPS(double* lastTime, const float targetFPS)
     *lastTime += 1.0f / targetFPS;
 }
 
+// Resets the viewport dimensions whenevers the main window is resized
 void window_size_callback_static(GLFWwindow* window, int width, int height) 
 {
     glViewport(0, 0, width, height);
     sceneBuffer.rescaleFrameBuffer(width, height);
 }
+
 // returns true if the mose is hovering over a window with name windowName
 bool hoverImGUIWindow(const char* windowName) 
 {
     ImGuiContext& g = *GImGui;
     return !strcmp(g.HoveredWindow ? g.HoveredWindow->Name : "NULL", windowName);
+}
+
+// Shows a window for opening a saved sketch in the canvas window
+void showFileOpen() 
+{
+    ImGui::Begin("Open File", &show_file_open);
+    ImGui::Text("Menu for opening a file");
+    ImGui::End();
+} 
+
+// Shows a window for saving a file in the canvas window 
+void showFileSave() 
+{
+    ImGui::Begin("Save File", &show_file_save);
+    ImGui::Text("Menu for saving a file");
+    ImGui::End();
 }
