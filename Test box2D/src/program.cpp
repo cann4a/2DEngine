@@ -17,6 +17,7 @@
 #include <random>
 #include "framebuffer.h"
 #include "simulation_manager.h"
+#include "ImGuiFileBrowser.h"
 
 // structure for hloding shape data for drawing
 // p1: top-left corner, p2: bottom-right corner, color: shape color
@@ -139,6 +140,9 @@ int main(int argc, char* argv[])
 
     canvasWindowFlags |= ImGuiWindowFlags_MenuBar;
 
+    // file dialog initializaxtino for saving and opening files
+    imgui_addons::ImGuiFileBrowser file_dialog;
+
     // map connecting wall position and dimensions ---> map<position, dimension>
     std::map<std::vector<float>, std::vector<float>> wallsData = 
     {
@@ -220,23 +224,23 @@ int main(int argc, char* argv[])
         if (simulationManager.reset)
         {
            simulationManager.m_boxes.clear();
-            // deletes all the dynamic objects inside the world
-            for (b2Body* b = simulationManager.m_world->GetBodyList(); b != nullptr;)
-            {
-                b2Body* next = b->GetNext();
-                if (b->GetType() == b2_dynamicBody)
-                    simulationManager.m_world->DestroyBody(b);
-                b = next;
-            }
-            /* regenerates the boxes
-            for (int i = 0; i < num_boxes; i++) 
-            {
-                Box newBox;
-                newBox.init(m_world, glm::vec2(xPos(randGenerator), yPos(randGenerator)), glm::vec2(size(randGenerator), size(randGenerator)));
-                newBox.setRotation(glm::radians(rotation(randGenerator)));
-                newBox.setColor(glm::vec3(r(randGenerator), g(randGenerator), b(randGenerator)));
-                m_boxes.push_back(newBox);
-            }*/
+           // deletes all the dynamic objects inside the world
+           for (b2Body* b = simulationManager.m_world->GetBodyList(); b != nullptr;)
+           {
+               b2Body* next = b->GetNext();
+               if (b->GetType() == b2_dynamicBody)
+                   simulationManager.m_world->DestroyBody(b);
+               b = next;
+           }
+           /* regenerates the boxes
+           for (int i = 0; i < num_boxes; i++)
+           {
+               Box newBox;
+               newBox.init(m_world, glm::vec2(xPos(randGenerator), yPos(randGenerator)), glm::vec2(size(randGenerator), size(randGenerator)));
+               newBox.setRotation(glm::radians(rotation(randGenerator)));
+               newBox.setColor(glm::vec3(r(randGenerator), g(randGenerator), b(randGenerator)));
+               m_boxes.push_back(newBox);
+           }*/
         }
         if (simulationManager.render)
         {
@@ -248,25 +252,25 @@ int main(int argc, char* argv[])
             ImGui::Image(
                 (ImTextureID)sceneBuffer.getFrameTexture(),
                 ImGui::GetContentRegionAvail(),
-                    ImVec2(0, 1),
-                    ImVec2(1, 0));
+                ImVec2(0, 1),
+                ImVec2(1, 0));
 
-                    // write to the custom framebuffer
-                    sceneBuffer.bind();
-                    glClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
-                    glClear(GL_COLOR_BUFFER_BIT);
+            // write to the custom framebuffer
+            sceneBuffer.bind();
+            glClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
+            glClear(GL_COLOR_BUFFER_BIT);
 
-                    for (auto& box : simulationManager.m_boxes)
-                    {
-                        glm::vec2 pos = glm::vec2(box.getBody()->GetPosition().x, box.getBody()->GetPosition().y);
-                        glm::vec2 size = box.getDimensions();
-                        renderer->drawSpriteBox2D(RENDER_SCALE, ResourceManager::getTexture("container"), pos, size, glm::degrees(box.getBody()->GetAngle()), box.getColor());
-                    }
+            for (auto& box : simulationManager.m_boxes)
+            {
+                glm::vec2 pos = glm::vec2(box.getBody()->GetPosition().x, box.getBody()->GetPosition().y);
+                glm::vec2 size = box.getDimensions();
+                renderer->drawSpriteBox2D(RENDER_SCALE, ResourceManager::getTexture("container"), pos, size, glm::degrees(box.getBody()->GetAngle()), box.getColor());
+            }
 
-                    sceneBuffer.unbind();
-                    // perform a step in the simulation
-                    if (simulationManager.simulate)
-                        simulationManager.m_world->Step(1.0f / 60.0f, 6, 2);
+            sceneBuffer.unbind();
+            // perform a step in the simulation
+            if (simulationManager.simulate)
+                simulationManager.m_world->Step(1.0f / 60.0f, 6, 2);
         }
         else
         {
@@ -288,9 +292,6 @@ int main(int argc, char* argv[])
         style.WindowPadding = ref_saved_style.WindowPadding;
         ImGui::Begin("Canvas", nullptr, canvasWindowFlags);
 
-        if (show_file_open) showFileOpen();
-        if (show_file_save) showFileSave();
-
         // Canvas variables initialization
         static std::map<int, ImVector<MyShape::Shape>> pts;
         static ImVec2 scrolling(0.0f, 0.0f);
@@ -311,6 +312,23 @@ int main(int argc, char* argv[])
                 ImGui::EndMenu();
             }
             ImGui::EndMenuBar();
+        }
+
+        if (show_file_open) ImGui::OpenPopup("Open file");
+        if (show_file_save) ImGui::OpenPopup("Save file");
+
+        if (file_dialog.showFileDialog("Open file", imgui_addons::ImGuiFileBrowser::DialogMode::OPEN, ImVec2(700, 310), &show_file_open))
+        {
+            std::cout << file_dialog.selected_fn << std::endl;
+            std::cout << file_dialog.selected_path << std::endl;
+        }
+        if (file_dialog.showFileDialog("Save file", imgui_addons::ImGuiFileBrowser::DialogMode::SAVE, ImVec2(700, 310), &show_file_save))
+        {
+            std::cout << file_dialog.selected_fn << std::endl;
+            std::cout << file_dialog.selected_path << std::endl;
+            std::cout << file_dialog.ext << std::endl;
+            
+
         }
 
         ImGui::Checkbox("Enable grid", &opt_enable_grid);
@@ -375,7 +393,6 @@ int main(int argc, char* argv[])
             if (ImGui::MenuItem("Remove all", NULL, false, pts.size() > 0))
             { 
                 std::map<int, ImVector<MyShape::Shape>>::iterator it;
-                //for (it = points.begin(); it != points.end(); it++)
                 for (it = pts.begin(); it != pts.end(); it++)
                     it->second.clear();
             }
@@ -503,6 +520,8 @@ void showFileOpen()
 void showFileSave() 
 {
     ImGui::Begin("Save File", &show_file_save);
-    ImGui::Text("Menu for saving a file");
+    
+
     ImGui::End();
 }
+
