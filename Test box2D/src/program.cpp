@@ -1,3 +1,5 @@
+#define _CRT_SECURE_NO_WARNINGS
+
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <box2d/box2d.h>
@@ -5,6 +7,9 @@
 #include <iostream>
 #include <vector>
 #include <map>
+#include <random>
+#include <fstream>
+#include <cctype>
 #include "resource_manager.h"
 #include "sprite_renderer.h"
 #include "game_object.h"
@@ -14,10 +19,10 @@
 #include <imgui/imgui_internal.h>
 #include <imgui/imgui_impl_glfw.h>
 #include <imgui/imgui_impl_opengl3.h>
-#include <random>
 #include "framebuffer.h"
 #include "simulation_manager.h"
 #include "ImGuiFileBrowser.h"
+
 
 // structure for hloding shape data for drawing
 // p1: top-left corner, p2: bottom-right corner, color: shape color
@@ -34,10 +39,8 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 void window_size_callback_static(GLFWwindow* window, int width, int height);
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
 void limitFPS(double* lastTime, float targetFPS);
-bool hoverImGUIWindow(const char* windowName);
-
-void showFileOpen();
-void showFileSave();
+void saveCanvasFile(const std::string& filePath, std::map<int, ImVector<MyShape::Shape>> pts);
+void loadCanvasFile(const std::string& filePath, std::map<int, ImVector<MyShape::Shape>>* pts);
 
 // screen dimentions
 const unsigned int SCREEN_WIDTH = 1200;
@@ -319,17 +322,10 @@ int main(int argc, char* argv[])
 
         if (file_dialog.showFileDialog("Open file", imgui_addons::ImGuiFileBrowser::DialogMode::OPEN, ImVec2(700, 310), &show_file_open))
         {
-            std::cout << file_dialog.selected_fn << std::endl;
-            std::cout << file_dialog.selected_path << std::endl;
+            loadCanvasFile(file_dialog.selected_path, &pts);
         }
         if (file_dialog.showFileDialog("Save file", imgui_addons::ImGuiFileBrowser::DialogMode::SAVE, ImVec2(700, 310), &show_file_save))
-        {
-            std::cout << file_dialog.selected_fn << std::endl;
-            std::cout << file_dialog.selected_path << std::endl;
-            std::cout << file_dialog.ext << std::endl;
-            
-
-        }
+            saveCanvasFile(file_dialog.selected_path, pts);
 
         ImGui::Checkbox("Enable grid", &opt_enable_grid);
         ImGui::Checkbox("Enable context menu", &opt_enable_context_menu);
@@ -501,27 +497,61 @@ void window_size_callback_static(GLFWwindow* window, int width, int height)
     sceneBuffer.rescaleFrameBuffer(width, height);
 }
 
-// returns true if the mose is hovering over a window with name windowName
-bool hoverImGUIWindow(const char* windowName) 
+void saveCanvasFile(const std::string& filePath, std::map<int,ImVector<MyShape::Shape>> pts)
 {
-    ImGuiContext& g = *GImGui;
-    return !strcmp(g.HoveredWindow ? g.HoveredWindow->Name : "NULL", windowName);
+    std::ofstream outfile(filePath, std::ios_base::app);
+
+    outfile << "{" << '\n';
+
+    std::map<int, ImVector<MyShape::Shape>>::iterator it;
+    for (it = pts.begin(); it != pts.end(); it++)
+    {
+        outfile << "\t[" << it->first << "]:\n\t{\n";
+        for (auto& shape : it->second)
+        {
+            outfile << "\t\t";
+            outfile << "(" << shape.p1.x << "," << shape.p1.y << "), " << "(" << shape.p2.x << "," << shape.p2.y << "), "
+                << "(" << shape.color.x << "," << shape.color.y << "," << shape.color.z << "," << shape.color.w << ")\n";
+        }
+        outfile << "\t}\n";
+    }
+    outfile << "}";
 }
 
-// Shows a window for opening a saved sketch in the canvas window
-void showFileOpen() 
+void loadCanvasFile(const std::string& filePath, std::map<int, ImVector<MyShape::Shape>>* pts)
 {
-    ImGui::Begin("Open File", &show_file_open);
-    ImGui::Text("Menu for opening a file");
-    ImGui::End();
-} 
+    (*pts).clear();
+    std::ifstream infile(filePath, std::ios_base::in);
+    std::string buffer;
 
-// Shows a window for saving a file in the canvas window 
-void showFileSave() 
-{
-    ImGui::Begin("Save File", &show_file_save);
-    
-
-    ImGui::End();
+    int element_number{};
+    if (infile.is_open())
+    {
+        while (infile)
+        {
+            std::getline(infile, buffer);
+            for (unsigned int i = 0; i < buffer.length(); i++)
+            {
+                if (buffer[i] == '[')
+                    element_number = int(buffer[i + 1] - '0');
+                else if (buffer[i] == '\t' && buffer[i + 1] == '\t')
+                {
+                    std::vector<float> values;
+                    std::string b;
+                    for (auto& el : buffer)
+                    {
+                        if (std::isdigit(el) || el == '.')
+                            b += el;
+                        else if (!std::isdigit(el) && !b.empty())
+                        {
+                            values.push_back(stof(b));
+                            b.clear();
+                        }
+                    }
+                    MyShape::Shape shape = { ImVec2(values[0], values[1]), ImVec2(values[2], values[3]), ImVec4(values[4], values[5], values[6], values[7]) };
+                    (*pts)[element_number].push_back(shape);
+                }
+            }
+        }
+    }
 }
-
