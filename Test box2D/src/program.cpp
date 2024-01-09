@@ -32,20 +32,30 @@ namespace MyShape
         ImVec2 p1;
         ImVec2 p2;
         ImVec4 color;
+        float area;;
     };
 }
-
+// callback for registering the pressed keys
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
+// callback for resizing the viewport when the window is resized
 void window_size_callback_static(GLFWwindow* window, int width, int height);
+// callback for registering the mouse buttons
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
+// limits the FPS to a given amount
 void limitFPS(double* lastTime, float targetFPS);
+// save a canvas sketch to file
 void saveCanvasFile(const std::string& filePath, std::map<int, ImVector<MyShape::Shape>> pts);
+// loads a canvas sketch form file
 void loadCanvasFile(const std::string& filePath, std::map<int, ImVector<MyShape::Shape>>* pts);
+// creates a box Box2D object from a canvas sketch
+void createBoxObject(const ImVec2 origin, std::vector<MyShape::Shape> pts);
 
 // screen dimentions
 const unsigned int SCREEN_WIDTH = 1200;
 const unsigned int SCREEN_HEIGHT = 800;
+// scaling factor for transforming Box2D dimensions in rendering dimensions
 const float RENDER_SCALE = 30.0f;
+// maximum FPS
 const float TARGET_FPS = 60.0f;
 
 // Arrays for storing pressed and processed keys
@@ -206,7 +216,7 @@ int main(int argc, char* argv[])
         {
             simulationManager.reset = true;
             simulationManager.render = false;
-            simulationManager.populate = true;
+            //simulationManager.populate = true;
         }
         ImGui::SameLine(ImGui::GetWindowWidth() - 130.0f);
         if (ImGui::Checkbox("Enable gravity", &simulationManager.gravityOn))
@@ -226,15 +236,7 @@ int main(int argc, char* argv[])
         ImGui::Begin("Rendering", nullptr, renderingWindowFlags);
         if (simulationManager.reset)
         {
-           simulationManager.m_boxes.clear();
-           // deletes all the dynamic objects inside the world
-           for (b2Body* b = simulationManager.m_world->GetBodyList(); b != nullptr;)
-           {
-               b2Body* next = b->GetNext();
-               if (b->GetType() == b2_dynamicBody)
-                   simulationManager.m_world->DestroyBody(b);
-               b = next;
-           }
+           simulationManager.clearBoxes();
            /* regenerates the boxes
            for (int i = 0; i < num_boxes; i++)
            {
@@ -363,8 +365,20 @@ int main(int argc, char* argv[])
         if (adding_line)
         {
             pts[current_item].back().p2 = mouse_pos_in_canvas;
+            pts[current_item].back().area = abs(pts[current_item].back().p1.x - pts[current_item].back().p2.x) * abs(pts[current_item].back().p1.y - pts[current_item].back().p2.y);
             if (!ImGui::IsMouseDown(ImGuiMouseButton_Left))
+            {
                 adding_line = false;
+                // check for too small areas
+                if (pts[1].back().area > 100) 
+                {
+                    // generates box2D objects from the rectangles in the canvas
+                    // we only neewd to generate the last added rectangles and not all the ones in the canvas
+                    createBoxObject(origin, std::vector<MyShape::Shape>(pts[1].begin() + simulationManager.m_boxes.size(), pts[1].end()));
+                }
+                else
+                    pts[1].resize(pts[1].size() - 1);
+            }
         }
         // Pan (we use a zero mouse threshold when there's no context menu)
         // You may decide to make that threshold dynamic based on whether the mouse is hovering something etc.
@@ -384,13 +398,18 @@ int main(int argc, char* argv[])
             if (adding_line)
                 pts[current_item].resize(pts.size() - 1);
             adding_line = false;
-            if (ImGui::MenuItem("Remove one", NULL, false, pts[current_item].Size > 0)) { pts[current_item].resize(pts[current_item].size() - 1); }
+            if (ImGui::MenuItem("Remove one", NULL, false, pts[current_item].Size > 0))
+            { 
+                pts[current_item].resize(pts[current_item].size() - 1); 
+                simulationManager.clearLastBox();
+            }
 
             if (ImGui::MenuItem("Remove all", NULL, false, pts.size() > 0))
             { 
                 std::map<int, ImVector<MyShape::Shape>>::iterator it;
                 for (it = pts.begin(); it != pts.end(); it++)
                     it->second.clear();
+                simulationManager.clearBoxes();
             }
             ImGui::EndPopup();
         }
@@ -423,6 +442,7 @@ int main(int argc, char* argv[])
                    break;
                case 2:
                    draw_list->AddCircle(ImVec2(origin.x + pts[2][n].p1.x, origin.y + pts[2][n].p1.y), sqrt(pow(pts[2][n].p1.x - pts[2][n].p2.x, 2) + pow(pts[2][n].p1.y - pts[2][n].p2.y, 2)), ImGui::ColorConvertFloat4ToU32(pts[2][n].color));
+                   break;
                }
            }
         }
@@ -451,7 +471,6 @@ int main(int argc, char* argv[])
     return 0;
 }
 
-// Registers the keys inputs
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode) 
 {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
@@ -468,7 +487,6 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     }
 }
 
-// Registers the mouse inputs
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) 
 {
     if (button == GLFW_MOUSE_BUTTON_LEFT || button == GLFW_MOUSE_BUTTON_RIGHT) 
@@ -483,14 +501,12 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
     }
 }
 
-// limits the FPS of the application to targetFPS
 void limitFPS(double* lastTime, const float targetFPS) 
 {
     while (glfwGetTime() < *lastTime + 1.0f / targetFPS) { ; }
     *lastTime += 1.0f / targetFPS;
 }
 
-// Resets the viewport dimensions whenevers the main window is resized
 void window_size_callback_static(GLFWwindow* window, int width, int height) 
 {
     glViewport(0, 0, width, height);
@@ -553,5 +569,15 @@ void loadCanvasFile(const std::string& filePath, std::map<int, ImVector<MyShape:
                 }
             }
         }
+    }
+}
+
+void createBoxObject(const ImVec2 origin, std::vector<MyShape::Shape> pts)
+{
+    for (int n = 0; n < pts.size(); n++)
+    {
+        Box box;
+        box.init(simulationManager.m_world, glm::vec2((pts[n].p1.x + pts[n].p2.x) / 2 / RENDER_SCALE, (pts[n].p1.y + pts[n].p2.y) / 2 / RENDER_SCALE), glm::vec2(abs(pts[n].p1.x - pts[n].p2.x) / RENDER_SCALE, abs(pts[n].p1.y - pts[n].p2.y) / RENDER_SCALE));
+        simulationManager.m_boxes.push_back(box);
     }
 }

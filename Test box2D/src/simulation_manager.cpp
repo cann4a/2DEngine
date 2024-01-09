@@ -93,6 +93,24 @@ void SimulationManager::generateRandomBox(const int boxNumber)
     }
 }
 
+void SimulationManager::clearBoxes()
+{
+    m_boxes.clear();
+    for (b2Body* b = m_world->GetBodyList(); b != nullptr;)
+    {
+        b2Body* next = b->GetNext();
+        if (b->GetType() == b2_dynamicBody)
+            m_world->DestroyBody(b);
+        b = next;
+    }
+}
+
+void SimulationManager::clearLastBox()
+{
+    // the last body created in the world is the first one retrieved with GetBodyList()
+    m_world->DestroyBody(m_world->GetBodyList());
+}
+
 void SimulationManager::renderBoxes() 
 {
     
@@ -103,5 +121,6 @@ void SimulationManager::initRandomGeneration()
     
    
 }
+
 
 

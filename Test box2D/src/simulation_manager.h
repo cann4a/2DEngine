@@ -13,7 +13,7 @@ class SimulationManager
 public:
 	bool render = false;
 	bool reset = false;
-	bool populate = true;
+	bool populate = false;
 	bool simulate = true;
 
 	b2World* m_world;
@@ -28,6 +28,10 @@ public:
 	void renderBoxes();
 	void setGravity(b2Vec2 gravity);
 	void enableGravity();
+	// deletes all the boxes in the world
+	void clearBoxes();
+	// deletes the last box added to the world
+	void clearLastBox();
 	
 private:
 	b2Vec2 m_gravity;
