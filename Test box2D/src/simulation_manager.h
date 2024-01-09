@@ -34,6 +34,8 @@ public:
 	void clearBoxes();
 	// deletes the last box added to the world
 	void clearLastBox();
+	// deletes all the walls
+	void clearWalls();
 	
 private:
 	b2Vec2 m_gravity;

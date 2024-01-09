@@ -164,10 +164,10 @@ int main(int argc, char* argv[])
     // map connecting wall position and dimensions ---> map<position, dimension>
     std::map<std::vector<float>, std::vector<float>> wallsData = 
     {
-        {{(float)SCREEN_WIDTH / RENDER_SCALE / 2.0f, (float)SCREEN_HEIGHT / RENDER_SCALE + 10.0f} , {(float)SCREEN_WIDTH / RENDER_SCALE / 2.0f, 10.0f}},  // bottom
-        {{(float)SCREEN_WIDTH / RENDER_SCALE / 2.0f, -10.0f}                                      , {(float)SCREEN_WIDTH / RENDER_SCALE / 2.0f, 10.0f}},  // top
-        {{-10.0f, (float)SCREEN_HEIGHT / RENDER_SCALE / 2.0f}                                     , {10.0f, (float)SCREEN_HEIGHT / RENDER_SCALE / 2.0f}}, // left
-        {{(float)SCREEN_WIDTH / RENDER_SCALE + 10.0f, (float)SCREEN_HEIGHT / RENDER_SCALE / 2.0f}  , {10.0f, (float)SCREEN_HEIGHT / RENDER_SCALE / 2.0f}}, // right
+        {{(float)SCREEN_WIDTH / RENDER_SCALE / 2.0f, (float)SCREEN_HEIGHT / RENDER_SCALE + 10.0f} , {(float)SCREEN_WIDTH / RENDER_SCALE , 20.0f}},  // bottom
+        {{(float)SCREEN_WIDTH / RENDER_SCALE / 2.0f, -10.0f}                                      , {(float)SCREEN_WIDTH / RENDER_SCALE , 20.0f}},  // top
+        {{-10.0f, (float)SCREEN_HEIGHT / RENDER_SCALE / 2.0f}                                     , {20.0f, (float)SCREEN_HEIGHT / RENDER_SCALE}}, // left
+        {{(float)SCREEN_WIDTH / RENDER_SCALE + 10.0f, (float)SCREEN_HEIGHT / RENDER_SCALE / 2.0f}  , {20.0f, (float)SCREEN_HEIGHT / RENDER_SCALE }}, // right
     };
     std::vector<Wall> walls;
     std::map< std::vector<float>, std::vector<float>>::iterator it;
@@ -204,7 +204,7 @@ int main(int argc, char* argv[])
         {
             simulationManager.render = true;
             simulationManager.simulate = true;
-            simulationManager.reset = false;
+            //simulationManager.reset = false;
             //populate = true;
         }
         ImGui::SameLine();
@@ -227,77 +227,6 @@ int main(int argc, char* argv[])
         ImGui::InputInt("Number of boxes", &simulationManager.boxNumber);
 
         ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
-        ImGui::End();
-
-        // window for rendering the simulation
-
-        ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x, main_viewport->WorkPos.y), ImGuiCond_Once);
-        ImGui::SetNextWindowSize(ImVec2(2 * SCREEN_WIDTH / 3, 2 * SCREEN_HEIGHT / 3), ImGuiCond_Once);
-        style.WindowPadding = ImVec2(0.0f, 0.0f);
-        ImGui::Begin("Rendering", nullptr, renderingWindowFlags);
-        if (simulationManager.reset)
-        {
-           simulationManager.clearBoxes();
-           /* regenerates the boxes
-           for (int i = 0; i < num_boxes; i++)
-           {
-               Box newBox;
-               newBox.init(m_world, glm::vec2(xPos(randGenerator), yPos(randGenerator)), glm::vec2(size(randGenerator), size(randGenerator)));
-               newBox.setRotation(glm::radians(rotation(randGenerator)));
-               newBox.setColor(glm::vec3(r(randGenerator), g(randGenerator), b(randGenerator)));
-               m_boxes.push_back(newBox);
-           }*/
-        }
-        if (simulationManager.render)
-        {
-            if (simulationManager.populate)
-            {
-                simulationManager.generateRandomBox(simulationManager.boxNumber);
-                simulationManager.populate = false;
-            }
-            ImGui::Image(
-                (ImTextureID)sceneBuffer.getFrameTexture(),
-                ImGui::GetContentRegionAvail(),
-                ImVec2(0, 1),
-                ImVec2(1, 0));
-
-            // write to the custom framebuffer
-            sceneBuffer.bind();
-            glClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
-            glClear(GL_COLOR_BUFFER_BIT);
-
-            for (auto& box : simulationManager.m_boxes)
-            {
-                glm::vec2 pos = glm::vec2(box.getBody()->GetPosition().x, box.getBody()->GetPosition().y);
-                glm::vec2 size = box.getDimensions();
-                renderer->drawSpriteBox2D(RENDER_SCALE, ResourceManager::getTexture("container"), pos, size, glm::degrees(box.getBody()->GetAngle()), box.getColor());
-            }
-            for (auto& wall : simulationManager.m_walls)
-            {
-                glm::vec2 pos = glm::vec2(wall.getBody()->GetPosition().x, wall.getBody()->GetPosition().y);
-                glm::vec2 size = wall.getDimensions();
-                renderer->drawSpriteBox2D(RENDER_SCALE, ResourceManager::getTexture("container"), pos, size, glm::degrees(wall.getBody()->GetAngle()), wall.getColor());
-            }
-
-            sceneBuffer.unbind();
-            // perform a step in the simulation
-            if (simulationManager.simulate)
-                simulationManager.m_world->Step(1.0f / 60.0f, 6, 2);
-        }
-        else
-        {
-            ImGui::Image(
-                (ImTextureID)sceneBuffer.getFrameTexture(),
-                ImGui::GetContentRegionAvail(),
-                ImVec2(0, 1),
-                ImVec2(1, 0));
-
-            // write to the custom framebuffer
-            sceneBuffer.bind();
-            glClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
-            glClear(GL_COLOR_BUFFER_BIT);
-            sceneBuffer.unbind();
-        }
         ImGui::End();
 
         // canvas for drawing shapes 
@@ -339,7 +268,7 @@ int main(int argc, char* argv[])
         ImGui::Checkbox("Enable grid", &opt_enable_grid);
         ImGui::Checkbox("Enable context menu", &opt_enable_context_menu);
         ImGui::Text("Mouse Left: drag to add lines,\nMouse Right: drag to scroll, click for context menu.");
-        ImGui::ColorEdit3("shape color", (float*)&shapeColor); 
+        ImGui::ColorEdit3("shape color", (float*)&shapeColor);
         ImGui::Combo("Shape selection", &current_item, items, IM_ARRAYSIZE(items)); ImGui::SameLine();
         // flag for drawing static and dynamic objects in the canvas
         static int isObjectStatic;
@@ -369,7 +298,7 @@ int main(int argc, char* argv[])
         // Add first and second point
         if (is_hovered && !adding_line && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
         {
-            MyShape::Shape shape = {mouse_pos_in_canvas, mouse_pos_in_canvas, shapeColor};
+            MyShape::Shape shape = { mouse_pos_in_canvas, mouse_pos_in_canvas, shapeColor };
             pts[current_item].push_back(shape);
             adding_line = true;
         }
@@ -388,7 +317,7 @@ int main(int argc, char* argv[])
                     {
                     case 0:
                         // generates dynamic box2D boxes from the rectangles in the canvas
-                        // we only need to generate the last added rectangles and not all the ones in the canvas
+                        // we only need to generate the last rectangle added and not all the ones in the canvas
                         createBoxObject(origin, pts[1].back());
                         break;
                     case 1:
@@ -419,13 +348,13 @@ int main(int argc, char* argv[])
                 pts[current_item].resize(pts.size() - 1);
             adding_line = false;
             if (ImGui::MenuItem("Remove one", NULL, false, pts[current_item].Size > 0))
-            { 
-                pts[current_item].resize(pts[current_item].size() - 1); 
+            {
+                pts[current_item].resize(pts[current_item].size() - 1);
                 simulationManager.clearLastBox();
             }
 
             if (ImGui::MenuItem("Remove all", NULL, false, pts.size() > 0))
-            { 
+            {
                 std::map<int, ImVector<MyShape::Shape>>::iterator it;
                 for (it = pts.begin(); it != pts.end(); it++)
                     it->second.clear();
@@ -445,29 +374,130 @@ int main(int argc, char* argv[])
                 draw_list->AddLine(ImVec2(canvas_p0.x, canvas_p0.y + y), ImVec2(canvas_p1.x, canvas_p0.y + y), IM_COL32(200, 200, 200, 40));
             // Highlight the canvas center
             draw_list->AddLine(ImVec2(origin.x - 10.0f, origin.y), ImVec2(origin.x + 10.0f, origin.y), IM_COL32(255, 0, 0, 255));
-            draw_list->AddLine(ImVec2(origin.x, origin.y - 10.0f ), ImVec2(origin.x, origin.y + 10.0f), IM_COL32(255, 0, 0, 255));
+            draw_list->AddLine(ImVec2(origin.x, origin.y - 10.0f), ImVec2(origin.x, origin.y + 10.0f), IM_COL32(255, 0, 0, 255));
         }
         std::map<int, ImVector<MyShape::Shape>>::iterator it;
         for (it = pts.begin(); it != pts.end(); it++)
         {
-           for (int n = 0; n < it->second.Size; n ++)
-           {
-               switch (it->first)
-               {
-               case 0:
-                   draw_list->AddLine(ImVec2(origin.x + pts[0][n].p1.x, origin.y + pts[0][n].p1.y), ImVec2(origin.x + pts[0][n].p2.x, origin.y + pts[0][n].p2.y), ImGui::ColorConvertFloat4ToU32(pts[0][n].color), 2.0f);
-                   break;
-               case 1:
-                   draw_list->AddRect(ImVec2(origin.x + pts[1][n].p1.x, origin.y + pts[1][n].p1.y), ImVec2(origin.x + pts[1][n].p2.x, origin.y + pts[1][n].p2.y), ImGui::ColorConvertFloat4ToU32(pts[1][n].color));
-                   break;
-               case 2:
-                   draw_list->AddCircle(ImVec2(origin.x + pts[2][n].p1.x, origin.y + pts[2][n].p1.y), sqrt(pow(pts[2][n].p1.x - pts[2][n].p2.x, 2) + pow(pts[2][n].p1.y - pts[2][n].p2.y, 2)), ImGui::ColorConvertFloat4ToU32(pts[2][n].color));
-                   break;
-               }
-           }
+            for (int n = 0; n < it->second.Size; n++)
+            {
+                switch (it->first)
+                {
+                case 0:
+                    draw_list->AddLine(ImVec2(origin.x + pts[0][n].p1.x, origin.y + pts[0][n].p1.y), ImVec2(origin.x + pts[0][n].p2.x, origin.y + pts[0][n].p2.y), ImGui::ColorConvertFloat4ToU32(pts[0][n].color), 2.0f);
+                    break;
+                case 1:
+                    draw_list->AddRect(ImVec2(origin.x + pts[1][n].p1.x, origin.y + pts[1][n].p1.y), ImVec2(origin.x + pts[1][n].p2.x, origin.y + pts[1][n].p2.y), ImGui::ColorConvertFloat4ToU32(pts[1][n].color));
+                    break;
+                case 2:
+                    draw_list->AddCircle(ImVec2(origin.x + pts[2][n].p1.x, origin.y + pts[2][n].p1.y), sqrt(pow(pts[2][n].p1.x - pts[2][n].p2.x, 2) + pow(pts[2][n].p1.y - pts[2][n].p2.y, 2)), ImGui::ColorConvertFloat4ToU32(pts[2][n].color));
+                    break;
+                }
+            }
         }
         draw_list->PopClipRect();
         ImGui::End();
+
+        // window for rendering the simulation
+        ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x, main_viewport->WorkPos.y), ImGuiCond_Once);
+        ImGui::SetNextWindowSize(ImVec2(2 * SCREEN_WIDTH / 3, 2 * SCREEN_HEIGHT / 3), ImGuiCond_Once);
+        style.WindowPadding = ImVec2(0.0f, 0.0f);
+
+        ImGui::Begin("Rendering", nullptr, renderingWindowFlags);
+        if (simulationManager.reset)
+        {
+           simulationManager.clearBoxes();
+           simulationManager.clearWalls();
+           /* regenerates the boxes
+           for (int i = 0; i < num_boxes; i++)
+           {
+               Box newBox;
+               newBox.init(m_world, glm::vec2(xPos(randGenerator), yPos(randGenerator)), glm::vec2(size(randGenerator), size(randGenerator)));
+               newBox.setRotation(glm::radians(rotation(randGenerator)));
+               newBox.setColor(glm::vec3(r(randGenerator), g(randGenerator), b(randGenerator)));
+               m_boxes.push_back(newBox);
+           }*/
+        }
+        if (simulationManager.render)
+        {
+            if (simulationManager.populate)
+            {
+                simulationManager.generateRandomBox(simulationManager.boxNumber);
+                simulationManager.populate = false;
+            }
+            ImGui::Image(
+                (ImTextureID)sceneBuffer.getFrameTexture(),
+                ImGui::GetContentRegionAvail(),
+                ImVec2(0, 1),
+                ImVec2(1, 0));
+
+            // write to the custom framebuffer
+            sceneBuffer.bind();
+            glClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
+            glClear(GL_COLOR_BUFFER_BIT);
+
+            if (simulationManager.reset)
+            {
+                simulationManager.reset = false;
+                std::map<int, ImVector<MyShape::Shape>>::iterator it;
+                for (it = pts.begin(); it != pts.end(); it++)
+                {
+                    for (int n = 0; n < it->second.Size; n++)
+                    {
+                        switch (it->second[n].type)
+                        {
+                        case b2_dynamicBody:
+                            createBoxObject(origin, it->second[n]);
+                            break;
+                        case b2_staticBody:
+                            createStaticObject(origin, it->second[n]);
+                            break;
+                        }
+
+                    }
+
+                }
+
+
+
+            }
+
+
+            for (auto& box : simulationManager.m_boxes)
+            {
+                glm::vec2 pos = glm::vec2(box.getBody()->GetPosition().x, box.getBody()->GetPosition().y);
+                glm::vec2 size = box.getDimensions();
+                renderer->drawSpriteBox2D(RENDER_SCALE, ResourceManager::getTexture("container"), pos, size, glm::degrees(box.getBody()->GetAngle()), box.getColor());
+            }
+            for (auto& wall : simulationManager.m_walls)
+            {
+                glm::vec2 pos = glm::vec2(wall.getBody()->GetPosition().x, wall.getBody()->GetPosition().y);
+                glm::vec2 size = wall.getDimensions();
+                renderer->drawSpriteBox2D(RENDER_SCALE, ResourceManager::getTexture("container"), pos, size, glm::degrees(wall.getBody()->GetAngle()), wall.getColor());
+            }
+
+            sceneBuffer.unbind();
+            // perform a step in the simulation
+            if (simulationManager.simulate)
+                simulationManager.m_world->Step(1.0f / 60.0f, 6, 2);
+        }
+        else
+        {
+            ImGui::Image(
+                (ImTextureID)sceneBuffer.getFrameTexture(),
+                ImGui::GetContentRegionAvail(),
+                ImVec2(0, 1),
+                ImVec2(1, 0));
+
+            // write to the custom framebuffer
+            sceneBuffer.bind();
+            glClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
+            glClear(GL_COLOR_BUFFER_BIT);
+            sceneBuffer.unbind();
+        }
+        ImGui::End();
+
+        
        
         ImGui::ShowDemoWindow();
         ImGui::Render();
