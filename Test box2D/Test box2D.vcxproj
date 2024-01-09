@@ -153,6 +153,7 @@
     <ClCompile Include="src\shader.cpp" />
     <ClCompile Include="src\sprite_renderer.cpp" />
     <ClCompile Include="src\texture.cpp" />
+    <ClCompile Include="src\wall.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="glfw3.dll" />
@@ -176,6 +177,7 @@
     <ClInclude Include="src\resource_manager.h" />
     <ClInclude Include="src\sprite_renderer.h" />
     <ClInclude Include="src\texture.h" />
+    <ClInclude Include="src\wall.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

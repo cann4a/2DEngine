@@ -3,7 +3,8 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <box2d/box2d.h>
-#include "Box.h"
+#include "box.h"
+#include "wall.h"
 #include <iostream>
 #include <vector>
 #include <map>
@@ -32,7 +33,8 @@ namespace MyShape
         ImVec2 p1;
         ImVec2 p2;
         ImVec4 color;
-        float area;;
+        b2BodyType type;
+        float area; 
     };
 }
 // callback for registering the pressed keys
@@ -48,7 +50,9 @@ void saveCanvasFile(const std::string& filePath, std::map<int, ImVector<MyShape:
 // loads a canvas sketch form file
 void loadCanvasFile(const std::string& filePath, std::map<int, ImVector<MyShape::Shape>>* pts);
 // creates a box Box2D object from a canvas sketch
-void createBoxObject(const ImVec2 origin, std::vector<MyShape::Shape> pts);
+void createBoxObject(const ImVec2 origin, MyShape::Shape shape);
+// creates a static Box2D object 
+void createStaticObject(const ImVec2 origin, MyShape::Shape shape);
 
 // screen dimentions
 const unsigned int SCREEN_WIDTH = 1200;
@@ -67,6 +71,7 @@ bool mouseKeysProcessed[3];
 // Flags for canvas menu
 bool show_file_open = false;
 bool show_file_save = false;
+
 
 // Instanciate a custom framebuffer and a simulation manager. The former is used for rendering the simultation, while the latter
 // manages the simulation objects and parameters 
@@ -164,17 +169,13 @@ int main(int argc, char* argv[])
         {{-10.0f, (float)SCREEN_HEIGHT / RENDER_SCALE / 2.0f}                                     , {10.0f, (float)SCREEN_HEIGHT / RENDER_SCALE / 2.0f}}, // left
         {{(float)SCREEN_WIDTH / RENDER_SCALE + 10.0f, (float)SCREEN_HEIGHT / RENDER_SCALE / 2.0f}  , {10.0f, (float)SCREEN_HEIGHT / RENDER_SCALE / 2.0f}}, // right
     };
-
+    std::vector<Wall> walls;
     std::map< std::vector<float>, std::vector<float>>::iterator it;
     for (it = wallsData.begin(); it != wallsData.end(); it++) 
     {
-        b2BodyDef groundBodyDef;
-        groundBodyDef.position.Set(it->first[0], it->first[1]);
-        b2Body* groundBody = simulationManager.m_world->CreateBody(&groundBodyDef);
-        // ground fixture
-        b2PolygonShape groundBox;
-        groundBox.SetAsBox(it->second[0], it->second[1]);
-        groundBody->CreateFixture(&groundBox, 0.0f);
+        Wall wall;
+        wall.init(simulationManager.m_world, glm::vec2(it->first[0], it->first[1]), glm::vec2(it->second[0], it->second[1]));
+        walls.push_back(wall);
     }
 
     // buffer initialization for rendering the simulation
@@ -271,6 +272,12 @@ int main(int argc, char* argv[])
                 glm::vec2 size = box.getDimensions();
                 renderer->drawSpriteBox2D(RENDER_SCALE, ResourceManager::getTexture("container"), pos, size, glm::degrees(box.getBody()->GetAngle()), box.getColor());
             }
+            for (auto& wall : simulationManager.m_walls)
+            {
+                glm::vec2 pos = glm::vec2(wall.getBody()->GetPosition().x, wall.getBody()->GetPosition().y);
+                glm::vec2 size = wall.getDimensions();
+                renderer->drawSpriteBox2D(RENDER_SCALE, ResourceManager::getTexture("container"), pos, size, glm::degrees(wall.getBody()->GetAngle()), wall.getColor());
+            }
 
             sceneBuffer.unbind();
             // perform a step in the simulation
@@ -333,7 +340,11 @@ int main(int argc, char* argv[])
         ImGui::Checkbox("Enable context menu", &opt_enable_context_menu);
         ImGui::Text("Mouse Left: drag to add lines,\nMouse Right: drag to scroll, click for context menu.");
         ImGui::ColorEdit3("shape color", (float*)&shapeColor); 
-        ImGui::Combo("Shape selection", &current_item, items, IM_ARRAYSIZE(items));
+        ImGui::Combo("Shape selection", &current_item, items, IM_ARRAYSIZE(items)); ImGui::SameLine();
+        // flag for drawing static and dynamic objects in the canvas
+        static int isObjectStatic;
+        ImGui::RadioButton("dynamic", &isObjectStatic, 0); ImGui::SameLine();
+        ImGui::RadioButton("static", &isObjectStatic, 1);
 
         // Using InvisibleButton() as a convenience 1) it will advance the layout cursor and 2) allows us to use IsItemHovered()/IsItemActive()
         ImVec2 canvas_p0 = ImGui::GetCursorScreenPos();      // ImDrawList API uses screen coordinates!
@@ -365,16 +376,25 @@ int main(int argc, char* argv[])
         if (adding_line)
         {
             pts[current_item].back().p2 = mouse_pos_in_canvas;
+            pts[current_item].back().type = isObjectStatic == 0 ? b2_dynamicBody : b2_staticBody;
             pts[current_item].back().area = abs(pts[current_item].back().p1.x - pts[current_item].back().p2.x) * abs(pts[current_item].back().p1.y - pts[current_item].back().p2.y);
-            if (!ImGui::IsMouseDown(ImGuiMouseButton_Left))
+            if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) // left mouse button released
             {
                 adding_line = false;
                 // check for too small areas
-                if (pts[1].back().area > 100) 
+                if (pts[1].back().area > 100) // to be changed in order to account for lines
                 {
-                    // generates box2D objects from the rectangles in the canvas
-                    // we only neewd to generate the last added rectangles and not all the ones in the canvas
-                    createBoxObject(origin, std::vector<MyShape::Shape>(pts[1].begin() + simulationManager.m_boxes.size(), pts[1].end()));
+                    switch (isObjectStatic)
+                    {
+                    case 0:
+                        // generates dynamic box2D boxes from the rectangles in the canvas
+                        // we only need to generate the last added rectangles and not all the ones in the canvas
+                        createBoxObject(origin, pts[1].back());
+                        break;
+                    case 1:
+                        createStaticObject(origin, pts[current_item].back());
+                        break;
+                    }
                 }
                 else
                     pts[1].resize(pts[1].size() - 1);
@@ -572,12 +592,16 @@ void loadCanvasFile(const std::string& filePath, std::map<int, ImVector<MyShape:
     }
 }
 
-void createBoxObject(const ImVec2 origin, std::vector<MyShape::Shape> pts)
+void createBoxObject(const ImVec2 origin, MyShape::Shape shape)
 {
-    for (int n = 0; n < pts.size(); n++)
-    {
         Box box;
-        box.init(simulationManager.m_world, glm::vec2((pts[n].p1.x + pts[n].p2.x) / 2 / RENDER_SCALE, (pts[n].p1.y + pts[n].p2.y) / 2 / RENDER_SCALE), glm::vec2(abs(pts[n].p1.x - pts[n].p2.x) / RENDER_SCALE, abs(pts[n].p1.y - pts[n].p2.y) / RENDER_SCALE));
+        box.init(simulationManager.m_world, glm::vec2((shape.p1.x + shape.p2.x) / 2 / RENDER_SCALE, (shape.p1.y + shape.p2.y) / 2 / RENDER_SCALE), glm::vec2(abs(shape.p1.x - shape.p2.x) / RENDER_SCALE, abs(shape.p1.y - shape.p2.y) / RENDER_SCALE));
         simulationManager.m_boxes.push_back(box);
-    }
+}
+
+void createStaticObject(const ImVec2 origin, MyShape::Shape shape)
+{
+        Wall wall;
+        wall.init(simulationManager.m_world, glm::vec2((shape.p1.x + shape.p2.x) / 2 / RENDER_SCALE, (shape.p1.y + shape.p2.y) / 2 / RENDER_SCALE), glm::vec2(abs(shape.p1.x - shape.p2.x) / RENDER_SCALE, abs(shape.p1.y - shape.p2.y) / RENDER_SCALE));
+        simulationManager.m_walls.push_back(wall);
 }

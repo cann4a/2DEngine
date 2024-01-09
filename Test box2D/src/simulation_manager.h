@@ -6,6 +6,7 @@
 #include "sprite_renderer.h"
 #include "texture.h"
 #include "box.h"
+#include "wall.h"
 #include <random>
 
 class SimulationManager
@@ -21,6 +22,7 @@ public:
 
 	std::vector<Box> m_boxes;
 	int boxNumber = 20;
+	std::vector<Wall> m_walls;
 
 	SimulationManager(const float RENDER_SCALE, const unsigned int SCREEN_WIDTH, const unsigned int SCREEN_HEIGHT);
 	~SimulationManager();

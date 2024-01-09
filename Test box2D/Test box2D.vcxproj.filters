@@ -69,6 +69,9 @@
     <ClCompile Include="src\ImGuiFileBrowser.cpp">
       <Filter>File di origine</Filter>
     </ClCompile>
+    <ClCompile Include="src\wall.cpp">
+      <Filter>File di origine</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="glfw3.dll" />
@@ -126,6 +129,9 @@
       <Filter>File di intestazione</Filter>
     </ClInclude>
     <ClInclude Include="src\ImGuiFileBrowser.h">
+      <Filter>File di intestazione</Filter>
+    </ClInclude>
+    <ClInclude Include="src\wall.h">
       <Filter>File di intestazione</Filter>
     </ClInclude>
   </ItemGroup>

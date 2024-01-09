@@ -8,7 +8,7 @@ void Box::init(b2World* world, const glm::vec2& position, const glm::vec2& dimen
 
 	b2PolygonShape boxShape;
 	boxShape.SetAsBox(dimensions.x / 2.0f, dimensions.y / 2.0f);
-	this->m_dimensions = dimensions;
+	m_dimensions = dimensions;
 	b2FixtureDef fixtureDef;
 	fixtureDef.shape = &boxShape;
 	fixtureDef.density = 1.0f;
