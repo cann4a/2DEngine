@@ -55,7 +55,7 @@ SimulationManager::SimulationManager(const float RENDER_SCALE, const unsigned in
     }*/
 
 }
-void SimulationManager::setGravity(b2Vec2 gravity) 
+void SimulationManager::setGravity(const b2Vec2 gravity) 
 {
     m_gravity = gravity;
     m_world->SetGravity(m_gravity);
@@ -95,7 +95,7 @@ void SimulationManager::generateRandomBox(const int boxNumber)
 
 void SimulationManager::clearBoxes()
 {
-    //m_boxes.clear();
+    m_boxes.clear();
     for (b2Body* b = m_world->GetBodyList(); b != nullptr;)
     {
         b2Body* next = b->GetNext();
@@ -113,7 +113,7 @@ void SimulationManager::clearLastBox()
 
 void SimulationManager::clearWalls()
 {
-    //m_walls.clear();
+    m_walls.clear();
     for (b2Body* b = m_world->GetBodyList(); b != nullptr;)
     {
         b2Body* next = b->GetNext();

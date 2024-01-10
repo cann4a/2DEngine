@@ -1,6 +1,7 @@
 #include "box.h"
 
-void Box::init(b2World* world, const glm::vec2& position, const glm::vec2& dimensions) {
+void Box::init(b2World* world, const glm::vec2& position, const glm::vec2& dimensions, const glm::vec3& color)
+{
 	b2BodyDef bodyDef;
 	bodyDef.type = b2_dynamicBody;
 	bodyDef.position.Set(position.x, position.y);
@@ -14,12 +15,6 @@ void Box::init(b2World* world, const glm::vec2& position, const glm::vec2& dimen
 	fixtureDef.density = 1.0f;
 	fixtureDef.friction = 0.3f;
 	fixture = body->CreateFixture(&fixtureDef);
-}
 
-void Box::setRotation(float angle) {
-	body->SetTransform(body->GetPosition(), angle);
-}
-
-void Box::setColor(glm::vec3 color) {
-	this->color = color;
+	setColor(color);
 }

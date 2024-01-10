@@ -12,7 +12,7 @@
 class SimulationManager
 {
 public:
-	bool render = false;
+	bool play = false;
 	bool reset = false;
 	bool populate = false;
 	bool simulate = true;
@@ -28,7 +28,7 @@ public:
 	~SimulationManager();
 	void generateRandomBox(const int boxNumber);
 	void renderBoxes();
-	void setGravity(b2Vec2 gravity);
+	void setGravity(const b2Vec2 gravity);
 	void enableGravity();
 	// deletes all the boxes in the world
 	void clearBoxes();

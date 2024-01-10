@@ -45,14 +45,14 @@ void window_size_callback_static(GLFWwindow* window, int width, int height);
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
 // limits the FPS to a given amount
 void limitFPS(double* lastTime, float targetFPS);
-// save a canvas sketch to file
-void saveCanvasFile(const std::string& filePath, std::map<int, ImVector<MyShape::Shape>> pts);
-// loads a canvas sketch form file
+// save a canva sketch to file
+void saveCanvasFile(const std::string& filePath, const std::map<int, ImVector<MyShape::Shape>>& pts);
+// loads a canva sketch form file
 void loadCanvasFile(const std::string& filePath, std::map<int, ImVector<MyShape::Shape>>* pts);
-// creates a box Box2D object from a canvas sketch
-void createBoxObject(const ImVec2 origin, MyShape::Shape shape);
+// creates a box Box2D object from a canva sketch
+void createBoxObject(const ImVec2 origin, const MyShape::Shape& shape);
 // creates a static Box2D object 
-void createStaticObject(const ImVec2 origin, MyShape::Shape shape);
+void createStaticObject(const ImVec2 origin, const MyShape::Shape& shape);
 
 // screen dimentions
 const unsigned int SCREEN_WIDTH = 1200;
@@ -67,11 +67,6 @@ bool keys[1024];
 bool keysProcessed[1024];
 bool mouseKeys[3];
 bool mouseKeysProcessed[3];
-
-// Flags for canvas menu
-bool show_file_open = false;
-bool show_file_save = false;
-
 
 // Instanciate a custom framebuffer and a simulation manager. The former is used for rendering the simultation, while the latter
 // manages the simulation objects and parameters 
@@ -89,7 +84,7 @@ int main(int argc, char* argv[])
 #endif
     //glfwWindowHint(GLFW_RESIZABLE, false);
 
-    GLFWwindow* window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Test box2D", nullptr, nullptr);
+    GLFWwindow* window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Engine 2D", nullptr, nullptr);
     glfwMakeContextCurrent(window);
     //glfwSwapInterval(1);
 
@@ -148,7 +143,7 @@ int main(int argc, char* argv[])
     ImGui_ImplOpenGL3_Init("#version 330");
     
     ImGuiWindowFlags renderingWindowFlags = 0;
-    ImGuiWindowFlags canvasWindowFlags = 0;
+    ImGuiWindowFlags canvaWindowFlags = 0;
 
     /*renderingWindowFlags |= ImGuiWindowFlags_NoResize;
     renderingWindowFlags |= ImGuiWindowFlags_NoMove;
@@ -156,13 +151,13 @@ int main(int argc, char* argv[])
     renderingWindowFlags |= ImGuiWindowFlags_NoScrollbar;
     renderingWindowFlags |= ImGuiWindowFlags_NoTitleBar;*/
 
-    canvasWindowFlags |= ImGuiWindowFlags_MenuBar;
+    canvaWindowFlags |= ImGuiWindowFlags_MenuBar;
 
     // file dialog initializaxtino for saving and opening files
     imgui_addons::ImGuiFileBrowser file_dialog;
 
     // map connecting wall position and dimensions ---> map<position, dimension>
-    std::map<std::vector<float>, std::vector<float>> wallsData = 
+    /*std::map<std::vector<float>, std::vector<float>> wallsData =
     {
         {{(float)SCREEN_WIDTH / RENDER_SCALE / 2.0f, (float)SCREEN_HEIGHT / RENDER_SCALE + 10.0f} , {(float)SCREEN_WIDTH / RENDER_SCALE , 20.0f}},  // bottom
         {{(float)SCREEN_WIDTH / RENDER_SCALE / 2.0f, -10.0f}                                      , {(float)SCREEN_WIDTH / RENDER_SCALE , 20.0f}},  // top
@@ -176,7 +171,7 @@ int main(int argc, char* argv[])
         Wall wall;
         wall.init(simulationManager.m_world, glm::vec2(it->first[0], it->first[1]), glm::vec2(it->second[0], it->second[1]));
         walls.push_back(wall);
-    }
+    }*/
 
     // buffer initialization for rendering the simulation
     sceneBuffer.init(SCREEN_WIDTH, SCREEN_HEIGHT);
@@ -204,7 +199,7 @@ int main(int argc, char* argv[])
         ImGui::Begin("Control");
         if (ImGui::Button("Play")) 
         {
-            simulationManager.render = true;
+            simulationManager.play = true;
             simulationManager.simulate = true;
             //simulationManager.reset = false;
             //populate = true;
@@ -218,7 +213,7 @@ int main(int argc, char* argv[])
         if (ImGui::Button("Reset")) 
         {
             simulationManager.reset = true;
-            simulationManager.render = false;
+            simulationManager.play = false;
             //simulationManager.populate = true;
         }
         ImGui::SameLine(ImGui::GetWindowWidth() - 130.0f);
@@ -231,8 +226,8 @@ int main(int argc, char* argv[])
         ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
         ImGui::End();
 
-        // canvas for drawing shapes 
-        ImGui::Begin("Canvas", nullptr, canvasWindowFlags);
+        // canva for drawing shapes 
+        ImGui::Begin("Canva", nullptr, canvaWindowFlags);
 
         // Canvas variables initialization
         static std::map<int, ImVector<MyShape::Shape>> pts;
@@ -244,6 +239,9 @@ int main(int argc, char* argv[])
         const char* items[] = { "Line", "Rectangle", "Circle" };
 
         // Menu
+        // Flags for canva menu
+        static bool show_file_open = false;
+        static bool show_file_save = false;
         if (ImGui::BeginMenuBar())
         {
             if (ImGui::BeginMenu("File"))
@@ -256,56 +254,46 @@ int main(int argc, char* argv[])
             ImGui::EndMenuBar();
         }
 
-        if (show_file_open) ImGui::OpenPopup("Open file");
-        if (show_file_save) ImGui::OpenPopup("Save file");
-
-        if (file_dialog.showFileDialog("Open file", imgui_addons::ImGuiFileBrowser::DialogMode::OPEN, ImVec2(700, 310), &show_file_open))
-        {
-            loadCanvasFile(file_dialog.selected_path, &pts);
-        }
-        if (file_dialog.showFileDialog("Save file", imgui_addons::ImGuiFileBrowser::DialogMode::SAVE, ImVec2(700, 310), &show_file_save))
-            saveCanvasFile(file_dialog.selected_path, pts);
-
         ImGui::Checkbox("Enable grid", &opt_enable_grid);
         ImGui::Checkbox("Enable context menu", &opt_enable_context_menu);
         ImGui::Text("Mouse Left: drag to add lines,\nMouse Right: drag to scroll, click for context menu.");
         ImGui::ColorEdit3("shape color", (float*)&shapeColor);
         ImGui::Combo("Shape selection", &current_item, items, IM_ARRAYSIZE(items)); ImGui::SameLine();
-        // flag for drawing static and dynamic objects in the canvas
+        // flag for drawing static and dynamic objects in the canva
         static int isObjectStatic;
         ImGui::RadioButton("dynamic", &isObjectStatic, 0); ImGui::SameLine();
         ImGui::RadioButton("static", &isObjectStatic, 1);
 
         // Using InvisibleButton() as a convenience 1) it will advance the layout cursor and 2) allows us to use IsItemHovered()/IsItemActive()
-        ImVec2 canvas_p0 = ImGui::GetCursorScreenPos();      // ImDrawList API uses screen coordinates!
-        ImVec2 canvas_sz = ImGui::GetContentRegionAvail();   // Resize canvas to what's available
-        if (canvas_sz.x < 50.0f) canvas_sz.x = 50.0f;
-        if (canvas_sz.y < 50.0f) canvas_sz.y = 50.0f;
-        ImVec2 canvas_p1 = ImVec2(canvas_p0.x + canvas_sz.x, canvas_p0.y + canvas_sz.y);
+        ImVec2 canva_p0 = ImGui::GetCursorScreenPos();      // ImDrawList API uses screen coordinates!
+        ImVec2 canva_sz = ImGui::GetContentRegionAvail();   // Resize canva to what's available
+        if (canva_sz.x < 50.0f) canva_sz.x = 50.0f;
+        if (canva_sz.y < 50.0f) canva_sz.y = 50.0f;
+        ImVec2 canva_p1 = ImVec2(canva_p0.x + canva_sz.x, canva_p0.y + canva_sz.y);
 
         // Draw border and background color
         ImGuiIO& io = ImGui::GetIO();
         ImDrawList* draw_list = ImGui::GetWindowDrawList();
-        draw_list->AddRectFilled(canvas_p0, canvas_p1, IM_COL32(50, 50, 50, 255));
-        draw_list->AddRect(canvas_p0, canvas_p1, IM_COL32(255, 255, 255, 255));
+        draw_list->AddRectFilled(canva_p0, canva_p1, IM_COL32(50, 50, 50, 255));
+        draw_list->AddRect(canva_p0, canva_p1, IM_COL32(255, 255, 255, 255));
 
         // This will catch our interactions
-        ImGui::InvisibleButton("canvas", canvas_sz, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
+        ImGui::InvisibleButton("canva", canva_sz, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
         const bool is_hovered = ImGui::IsItemHovered(); // Hovered
         const bool is_active = ImGui::IsItemActive();   // Held
-        const ImVec2 origin(canvas_p0.x + scrolling.x, canvas_p0.y + scrolling.y); // Lock scrolled origin
-        const ImVec2 mouse_pos_in_canvas(io.MousePos.x - origin.x, io.MousePos.y - origin.y);
+        const ImVec2 origin(canva_p0.x + scrolling.x, canva_p0.y + scrolling.y); // Lock scrolled origin
+        const ImVec2 mouse_pos_in_canva(io.MousePos.x - origin.x, io.MousePos.y - origin.y);
 
         // Add first and second point
         if (is_hovered && !adding_line && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
         {
-            MyShape::Shape shape = { mouse_pos_in_canvas, mouse_pos_in_canvas, shapeColor };
+            MyShape::Shape shape = { mouse_pos_in_canva, mouse_pos_in_canva, shapeColor };
             pts[current_item].push_back(shape);
             adding_line = true;
         }
         if (adding_line)
         {
-            pts[current_item].back().p2 = mouse_pos_in_canvas;
+            pts[current_item].back().p2 = mouse_pos_in_canva;
             pts[current_item].back().type = isObjectStatic == 0 ? b2_dynamicBody : b2_staticBody;
             pts[current_item].back().area = abs(pts[current_item].back().p1.x - pts[current_item].back().p2.x) * abs(pts[current_item].back().p1.y - pts[current_item].back().p2.y);
             if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) // left mouse button released
@@ -317,8 +305,8 @@ int main(int argc, char* argv[])
                     switch (isObjectStatic)
                     {
                     case 0:
-                        // generates dynamic box2D boxes from the rectangles in the canvas
-                        // we only need to generate the last rectangle added and not all the ones in the canvas
+                        // generates dynamic box2D boxes from the rectangles in the canva
+                        // we only need to generate the last rectangle added and not all the ones in the canva
                         createBoxObject(origin, pts[1].back());
                         break;
                     case 1:
@@ -360,24 +348,24 @@ int main(int argc, char* argv[])
                 std::map<int, ImVector<MyShape::Shape>>::iterator it;
                 for (it = pts.begin(); it != pts.end(); it++)
                     it->second.clear();
-                simulationManager.m_boxes.clear();
+                //simulationManager.m_boxes.clear();
                 simulationManager.clearBoxes();
-                simulationManager.m_walls.clear();
+                //simulationManager.m_walls.clear();
                 simulationManager.clearWalls();
             }
             ImGui::EndPopup();
         }
 
-        // Draw grid + all lines in the canvas
-        draw_list->PushClipRect(canvas_p0, canvas_p1, true);
+        // Draw grid + all lines in the canva
+        draw_list->PushClipRect(canva_p0, canva_p1, true);
         if (opt_enable_grid)
         {
             const float GRID_STEP = 64.0f;
-            for (float x = fmodf(scrolling.x, GRID_STEP); x < canvas_sz.x; x += GRID_STEP)
-                draw_list->AddLine(ImVec2(canvas_p0.x + x, canvas_p0.y), ImVec2(canvas_p0.x + x, canvas_p1.y), IM_COL32(200, 200, 200, 40));
-            for (float y = fmodf(scrolling.y, GRID_STEP); y < canvas_sz.y; y += GRID_STEP)
-                draw_list->AddLine(ImVec2(canvas_p0.x, canvas_p0.y + y), ImVec2(canvas_p1.x, canvas_p0.y + y), IM_COL32(200, 200, 200, 40));
-            // Highlight the canvas center
+            for (float x = fmodf(scrolling.x, GRID_STEP); x < canva_sz.x; x += GRID_STEP)
+                draw_list->AddLine(ImVec2(canva_p0.x + x, canva_p0.y), ImVec2(canva_p0.x + x, canva_p1.y), IM_COL32(200, 200, 200, 40));
+            for (float y = fmodf(scrolling.y, GRID_STEP); y < canva_sz.y; y += GRID_STEP)
+                draw_list->AddLine(ImVec2(canva_p0.x, canva_p0.y + y), ImVec2(canva_p1.x, canva_p0.y + y), IM_COL32(200, 200, 200, 40));
+            // Highlight the canva center
             draw_list->AddLine(ImVec2(origin.x - 10.0f, origin.y), ImVec2(origin.x + 10.0f, origin.y), IM_COL32(255, 0, 0, 255));
             draw_list->AddLine(ImVec2(origin.x, origin.y - 10.0f), ImVec2(origin.x, origin.y + 10.0f), IM_COL32(255, 0, 0, 255));
         }
@@ -401,6 +389,34 @@ int main(int argc, char* argv[])
             }
         }
         draw_list->PopClipRect();
+
+        if (show_file_open) ImGui::OpenPopup("Open file");
+        if (show_file_save) ImGui::OpenPopup("Save file");
+
+        if (file_dialog.showFileDialog("Open file", imgui_addons::ImGuiFileBrowser::DialogMode::OPEN, ImVec2(700, 310), &show_file_open))
+        {
+            loadCanvasFile(file_dialog.selected_path, &pts);
+
+            std::map<int, ImVector<MyShape::Shape>>::iterator it;
+            for (it = pts.begin(); it != pts.end(); it++)
+            {
+                for (int n = 0; n < it->second.Size; n++)
+                {
+                    switch (it->second[n].type)
+                    {
+                    case b2_dynamicBody:
+                        createBoxObject(origin, it->second[n]);
+                        break;
+                    case b2_staticBody:
+                        createStaticObject(origin, it->second[n]);
+                        break;
+                    }
+                }
+            }
+        }
+        if (file_dialog.showFileDialog("Save file", imgui_addons::ImGuiFileBrowser::DialogMode::SAVE, ImVec2(700, 310), &show_file_save))
+            saveCanvasFile(file_dialog.selected_path, pts);
+
         ImGui::End();
 
         // window for rendering the simulation
@@ -423,7 +439,7 @@ int main(int argc, char* argv[])
                m_boxes.push_back(newBox);
            }*/
         }
-        if (simulationManager.render)
+        if (simulationManager.play)
         {
             if (simulationManager.populate)
             {
@@ -444,25 +460,26 @@ int main(int argc, char* argv[])
             if (simulationManager.reset)
             {
                 simulationManager.reset = false;
+                /*
                 std::map< std::vector<float>, std::vector<float>>::iterator it1;
                 for (it1 = wallsData.begin(); it1 != wallsData.end(); it1++)
                 {
                     Wall wall;
                     wall.init(simulationManager.m_world, glm::vec2(it1->first[0], it1->first[1]), glm::vec2(it1->second[0], it1->second[1]));
                     walls.push_back(wall);
-                }
-                std::map<int, ImVector<MyShape::Shape>>::iterator it2;
-                for (it2 = pts.begin(); it2 != pts.end(); it2++)
+                }*/
+                std::map<int, ImVector<MyShape::Shape>>::iterator it;
+                for (it = pts.begin(); it != pts.end(); it++)
                 {
-                    for (int n = 0; n < it2->second.Size; n++)
+                    for (int n = 0; n < it->second.Size; n++)
                     {
-                        switch (it2->second[n].type)
+                        switch (it->second[n].type)
                         {
                         case b2_dynamicBody:
-                            createBoxObject(origin, it2->second[n]);
+                            createBoxObject(origin, it->second[n]);
                             break;
                         case b2_staticBody:
-                            createStaticObject(origin, it2->second[n]);
+                            createStaticObject(origin, it->second[n]);
                             break;
                         }
                     }
@@ -481,9 +498,8 @@ int main(int argc, char* argv[])
                 glm::vec2 size = wall.getDimensions();
                 renderer->drawSpriteBox2D(RENDER_SCALE, ResourceManager::getTexture("container"), pos, size, glm::degrees(wall.getBody()->GetAngle()), wall.getColor());
             }
-
-
             sceneBuffer.unbind();
+
             // perform a step in the simulation
             if (simulationManager.simulate)
                 simulationManager.m_world->Step(1.0f / 60.0f, 6, 2);
@@ -504,9 +520,7 @@ int main(int argc, char* argv[])
         }
         ImGui::End();
 
-        
-       
-        ImGui::ShowDemoWindow();
+        //ImGui::ShowDemoWindow();
         ImGui::Render();
 
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -570,13 +584,13 @@ void window_size_callback_static(GLFWwindow* window, int width, int height)
     sceneBuffer.rescaleFrameBuffer(width, height);
 }
 
-void saveCanvasFile(const std::string& filePath, std::map<int,ImVector<MyShape::Shape>> pts)
+void saveCanvasFile(const std::string& filePath, const std::map<int,ImVector<MyShape::Shape>>& pts)
 {
     std::ofstream outfile(filePath, std::ios_base::app);
 
     outfile << "{" << '\n';
 
-    std::map<int, ImVector<MyShape::Shape>>::iterator it;
+    std::map<int, ImVector<MyShape::Shape>>::const_iterator it;
     for (it = pts.begin(); it != pts.end(); it++)
     {
         outfile << "\t[" << it->first << "]:\n\t{\n";
@@ -584,7 +598,8 @@ void saveCanvasFile(const std::string& filePath, std::map<int,ImVector<MyShape::
         {
             outfile << "\t\t";
             outfile << "(" << shape.p1.x << "," << shape.p1.y << "), " << "(" << shape.p2.x << "," << shape.p2.y << "), "
-                << "(" << shape.color.x << "," << shape.color.y << "," << shape.color.z << "," << shape.color.w << ")\n";
+                << "(" << shape.color.x << "," << shape.color.y << "," << shape.color.z << "," << shape.color.w << "), "
+                << shape.type << ", " << shape.area << " \n";
         }
         outfile << "\t}\n";
     }
@@ -611,6 +626,7 @@ void loadCanvasFile(const std::string& filePath, std::map<int, ImVector<MyShape:
                 {
                     std::vector<float> values;
                     std::string b;
+                    bool proc_string = false;
                     for (auto& el : buffer)
                     {
                         if (std::isdigit(el) || el == '.')
@@ -621,7 +637,13 @@ void loadCanvasFile(const std::string& filePath, std::map<int, ImVector<MyShape:
                             b.clear();
                         }
                     }
-                    MyShape::Shape shape = { ImVec2(values[0], values[1]), ImVec2(values[2], values[3]), ImVec4(values[4], values[5], values[6], values[7]) };
+                    MyShape::Shape shape = {
+                        ImVec2(values[0], values[1]), // p1
+                        ImVec2(values[2], values[3]), // p2
+                        ImVec4(values[4], values[5], values[6], values[7]), // color
+                        (b2BodyType)values[8], // body type
+                        values[9] // area
+                    };  
                     (*pts)[element_number].push_back(shape);
                 }
             }
@@ -629,16 +651,16 @@ void loadCanvasFile(const std::string& filePath, std::map<int, ImVector<MyShape:
     }
 }
 
-void createBoxObject(const ImVec2 origin, MyShape::Shape shape)
+void createBoxObject(const ImVec2 origin, const MyShape::Shape& shape)
 {
-        Box box;
-        box.init(simulationManager.m_world, glm::vec2((shape.p1.x + shape.p2.x) / 2 / RENDER_SCALE, (shape.p1.y + shape.p2.y) / 2 / RENDER_SCALE), glm::vec2(abs(shape.p1.x - shape.p2.x) / RENDER_SCALE, abs(shape.p1.y - shape.p2.y) / RENDER_SCALE));
-        simulationManager.m_boxes.push_back(box);
+    Box box;
+    box.init(simulationManager.m_world, glm::vec2((shape.p1.x + shape.p2.x) / 2 / RENDER_SCALE, (shape.p1.y + shape.p2.y) / 2 / RENDER_SCALE), glm::vec2(abs(shape.p1.x - shape.p2.x) / RENDER_SCALE, abs(shape.p1.y - shape.p2.y) / RENDER_SCALE));
+    simulationManager.m_boxes.push_back(box);
 }
 
-void createStaticObject(const ImVec2 origin, MyShape::Shape shape)
+void createStaticObject(const ImVec2 origin, const MyShape::Shape& shape)
 {
-        Wall wall;
-        wall.init(simulationManager.m_world, glm::vec2((shape.p1.x + shape.p2.x) / 2 / RENDER_SCALE, (shape.p1.y + shape.p2.y) / 2 / RENDER_SCALE), glm::vec2(abs(shape.p1.x - shape.p2.x) / RENDER_SCALE, abs(shape.p1.y - shape.p2.y) / RENDER_SCALE));
-        simulationManager.m_walls.push_back(wall);
+    Wall wall;
+    wall.init(simulationManager.m_world, glm::vec2((shape.p1.x + shape.p2.x) / 2 / RENDER_SCALE, (shape.p1.y + shape.p2.y) / 2 / RENDER_SCALE), glm::vec2(abs(shape.p1.x - shape.p2.x) / RENDER_SCALE, abs(shape.p1.y - shape.p2.y) / RENDER_SCALE));
+    simulationManager.m_walls.push_back(wall);
 }
