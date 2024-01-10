@@ -199,6 +199,8 @@ int main(int argc, char* argv[])
         
 
         // control window 
+        style.WindowPadding = ref_saved_style.WindowPadding;
+
         ImGui::Begin("Control");
         if (ImGui::Button("Play")) 
         {
@@ -230,7 +232,6 @@ int main(int argc, char* argv[])
         ImGui::End();
 
         // canvas for drawing shapes 
-        style.WindowPadding = ref_saved_style.WindowPadding;
         ImGui::Begin("Canvas", nullptr, canvasWindowFlags);
 
         // Canvas variables initialization
@@ -347,18 +348,22 @@ int main(int argc, char* argv[])
             if (adding_line)
                 pts[current_item].resize(pts.size() - 1);
             adding_line = false;
+            // remove last item added in the canva
             if (ImGui::MenuItem("Remove one", NULL, false, pts[current_item].Size > 0))
             {
                 pts[current_item].resize(pts[current_item].size() - 1);
                 simulationManager.clearLastBox();
             }
-
+            // remove al the items in the canva
             if (ImGui::MenuItem("Remove all", NULL, false, pts.size() > 0))
             {
                 std::map<int, ImVector<MyShape::Shape>>::iterator it;
                 for (it = pts.begin(); it != pts.end(); it++)
                     it->second.clear();
+                simulationManager.m_boxes.clear();
                 simulationManager.clearBoxes();
+                simulationManager.m_walls.clear();
+                simulationManager.clearWalls();
             }
             ImGui::EndPopup();
         }
@@ -439,29 +444,30 @@ int main(int argc, char* argv[])
             if (simulationManager.reset)
             {
                 simulationManager.reset = false;
-                std::map<int, ImVector<MyShape::Shape>>::iterator it;
-                for (it = pts.begin(); it != pts.end(); it++)
+                std::map< std::vector<float>, std::vector<float>>::iterator it1;
+                for (it1 = wallsData.begin(); it1 != wallsData.end(); it1++)
                 {
-                    for (int n = 0; n < it->second.Size; n++)
+                    Wall wall;
+                    wall.init(simulationManager.m_world, glm::vec2(it1->first[0], it1->first[1]), glm::vec2(it1->second[0], it1->second[1]));
+                    walls.push_back(wall);
+                }
+                std::map<int, ImVector<MyShape::Shape>>::iterator it2;
+                for (it2 = pts.begin(); it2 != pts.end(); it2++)
+                {
+                    for (int n = 0; n < it2->second.Size; n++)
                     {
-                        switch (it->second[n].type)
+                        switch (it2->second[n].type)
                         {
                         case b2_dynamicBody:
-                            createBoxObject(origin, it->second[n]);
+                            createBoxObject(origin, it2->second[n]);
                             break;
                         case b2_staticBody:
-                            createStaticObject(origin, it->second[n]);
+                            createStaticObject(origin, it2->second[n]);
                             break;
                         }
-
                     }
-
                 }
-
-
-
             }
-
 
             for (auto& box : simulationManager.m_boxes)
             {
@@ -475,6 +481,7 @@ int main(int argc, char* argv[])
                 glm::vec2 size = wall.getDimensions();
                 renderer->drawSpriteBox2D(RENDER_SCALE, ResourceManager::getTexture("container"), pos, size, glm::degrees(wall.getBody()->GetAngle()), wall.getColor());
             }
+
 
             sceneBuffer.unbind();
             // perform a step in the simulation
