@@ -1,5 +1,5 @@
 #include "simulation_manager.h"
-#include "box.h"
+#include "box2DObject.h"
 #include <random>
 #include <map>
 #include "resource_manager.h"
@@ -86,7 +86,7 @@ void SimulationManager::generateRandomBox(const int boxNumber)
     for (int i = 0; i < boxNumber; i++)
     {
         Box newBox;
-        newBox.init(m_world, glm::vec2(xPos(randGenerator), yPos(randGenerator)), glm::vec2(size(randGenerator), size(randGenerator)));
+        newBox.init(m_world, glm::vec2(xPos(randGenerator), yPos(randGenerator)), glm::vec2(size(randGenerator), size(randGenerator)), b2_dynamicBody);
         newBox.setRotation(glm::radians(rotation(randGenerator)));
         newBox.setColor(glm::vec3(r(randGenerator), g(randGenerator), b(randGenerator)));
         m_boxes.push_back(newBox);

@@ -5,8 +5,7 @@
 #include <map>
 #include "sprite_renderer.h"
 #include "texture.h"
-#include "box.h"
-#include "wall.h"
+#include "box2DObject.h"
 #include <random>
 
 class SimulationManager

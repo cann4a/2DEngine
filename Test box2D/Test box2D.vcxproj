@@ -135,6 +135,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\box2DObject.cpp" />
     <ClCompile Include="src\ImGuiFileBrowser.cpp" />
     <ClCompile Include="src\simulation_manager.cpp" />
     <ClCompile Include="src\framebuffer.cpp" />
@@ -145,7 +146,6 @@
     <ClCompile Include="imgui\imgui_impl_opengl3.cpp" />
     <ClCompile Include="imgui\imgui_tables.cpp" />
     <ClCompile Include="imgui\imgui_widgets.cpp" />
-    <ClCompile Include="src\box.cpp" />
     <ClCompile Include="src\game_object.cpp" />
     <ClCompile Include="src\glad.c" />
     <ClCompile Include="src\program.cpp" />
@@ -153,12 +153,12 @@
     <ClCompile Include="src\shader.cpp" />
     <ClCompile Include="src\sprite_renderer.cpp" />
     <ClCompile Include="src\texture.cpp" />
-    <ClCompile Include="src\wall.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="glfw3.dll" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\box2DObject.h" />
     <ClInclude Include="src\ImGuiFileBrowser.h" />
     <ClInclude Include="src\shader.hpp" />
     <ClInclude Include="src\simulation_manager.h" />
@@ -172,12 +172,10 @@
     <ClInclude Include="imgui\imstb_rectpack.h" />
     <ClInclude Include="imgui\imstb_textedit.h" />
     <ClInclude Include="imgui\imstb_truetype.h" />
-    <ClInclude Include="src\box.h" />
     <ClInclude Include="src\game_object.h" />
     <ClInclude Include="src\resource_manager.h" />
     <ClInclude Include="src\sprite_renderer.h" />
     <ClInclude Include="src\texture.h" />
-    <ClInclude Include="src\wall.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

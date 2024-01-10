@@ -21,9 +21,6 @@
     <ClCompile Include="src\glad.c">
       <Filter>File di origine</Filter>
     </ClCompile>
-    <ClCompile Include="src\box.cpp">
-      <Filter>File di origine</Filter>
-    </ClCompile>
     <ClCompile Include="src\game_object.cpp">
       <Filter>File di origine</Filter>
     </ClCompile>
@@ -69,7 +66,7 @@
     <ClCompile Include="src\ImGuiFileBrowser.cpp">
       <Filter>File di origine</Filter>
     </ClCompile>
-    <ClCompile Include="src\wall.cpp">
+    <ClCompile Include="src\box2DObject.cpp">
       <Filter>File di origine</Filter>
     </ClCompile>
   </ItemGroup>
@@ -77,9 +74,6 @@
     <None Include="glfw3.dll" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\box.h">
-      <Filter>File di intestazione</Filter>
-    </ClInclude>
     <ClInclude Include="src\game_object.h">
       <Filter>File di intestazione</Filter>
     </ClInclude>
@@ -131,7 +125,7 @@
     <ClInclude Include="src\ImGuiFileBrowser.h">
       <Filter>File di intestazione</Filter>
     </ClInclude>
-    <ClInclude Include="src\wall.h">
+    <ClInclude Include="src\box2DObject.h">
       <Filter>File di intestazione</Filter>
     </ClInclude>
   </ItemGroup>

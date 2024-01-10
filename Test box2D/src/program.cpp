@@ -3,8 +3,7 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <box2d/box2d.h>
-#include "box.h"
-#include "wall.h"
+#include "box2DObject.h"
 #include <iostream>
 #include <vector>
 #include <map>
@@ -654,13 +653,13 @@ void loadCanvasFile(const std::string& filePath, std::map<int, ImVector<MyShape:
 void createBoxObject(const ImVec2 origin, const MyShape::Shape& shape)
 {
     Box box;
-    box.init(simulationManager.m_world, glm::vec2((shape.p1.x + shape.p2.x) / 2 / RENDER_SCALE, (shape.p1.y + shape.p2.y) / 2 / RENDER_SCALE), glm::vec2(abs(shape.p1.x - shape.p2.x) / RENDER_SCALE, abs(shape.p1.y - shape.p2.y) / RENDER_SCALE));
+    box.init(simulationManager.m_world, glm::vec2((shape.p1.x + shape.p2.x) / 2 / RENDER_SCALE, (shape.p1.y + shape.p2.y) / 2 / RENDER_SCALE), glm::vec2(abs(shape.p1.x - shape.p2.x) / RENDER_SCALE, abs(shape.p1.y - shape.p2.y) / RENDER_SCALE), b2_dynamicBody);
     simulationManager.m_boxes.push_back(box);
 }
 
 void createStaticObject(const ImVec2 origin, const MyShape::Shape& shape)
 {
     Wall wall;
-    wall.init(simulationManager.m_world, glm::vec2((shape.p1.x + shape.p2.x) / 2 / RENDER_SCALE, (shape.p1.y + shape.p2.y) / 2 / RENDER_SCALE), glm::vec2(abs(shape.p1.x - shape.p2.x) / RENDER_SCALE, abs(shape.p1.y - shape.p2.y) / RENDER_SCALE));
+    wall.init(simulationManager.m_world, glm::vec2((shape.p1.x + shape.p2.x) / 2 / RENDER_SCALE, (shape.p1.y + shape.p2.y) / 2 / RENDER_SCALE), glm::vec2(abs(shape.p1.x - shape.p2.x) / RENDER_SCALE, abs(shape.p1.y - shape.p2.y) / RENDER_SCALE), b2_staticBody);
     simulationManager.m_walls.push_back(wall);
 }
