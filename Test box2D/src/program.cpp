@@ -265,7 +265,11 @@ int main(int argc, char* argv[])
         ImGui::Checkbox("Enable grid", &opt_enable_grid);
         ImGui::Checkbox("Enable context menu", &opt_enable_context_menu);
         ImGui::Text("Mouse Left: drag to add lines,\nMouse Right: drag to scroll, click for context menu.");
-        ImGui::ColorEdit3("shape color", (float*)&shapeColor);
+        ImGui::ColorEdit3("shape color", (float*)&shapeColor); ImGui::SameLine();
+        static bool rotateShape;
+        static float rotateAmount;
+        ImGui::Checkbox("Rotate", &rotateShape); ImGui::SameLine();
+        ImGui::InputFloat("Degrees", &rotateAmount, 0.0f, 2 * PI);
         ImGui::Combo("Shape selection", &current_item, items, IM_ARRAYSIZE(items)); ImGui::SameLine();
         // flag for drawing static and dynamic objects in the canva
         static int isObjectStatic;
@@ -424,7 +428,18 @@ int main(int argc, char* argv[])
                     draw_list->AddLine(ImVec2(origin.x + pts[0][n].p1.x, origin.y + pts[0][n].p1.y), ImVec2(origin.x + pts[0][n].p2.x, origin.y + pts[0][n].p2.y), ImGui::ColorConvertFloat4ToU32(pts[0][n].color), 2.0f);
                     break;
                 case 1:
-                    draw_list->AddRect(ImVec2(origin.x + pts[1][n].p1.x, origin.y + pts[1][n].p1.y), ImVec2(origin.x + pts[1][n].p2.x, origin.y + pts[1][n].p2.y), ImGui::ColorConvertFloat4ToU32(pts[1][n].color));
+                    if (rotateShape)
+                    {
+                        ImVec2 center((pts[1][n].p1.x + pts[1][n].p2.x) / 2.0f, (pts[1][n].p1.y + pts[1][n].p2.y) / 2.0f);
+                        ImVec2 p1 = ImRotate(ImVec2(pts[1][n].p1.x - center.x, pts[1][n].p1.y - center.y), cos(glm::radians(-rotateAmount)), sin(glm::radians(-rotateAmount)));
+                        ImVec2 p2 = ImRotate(ImVec2(pts[1][n].p1.x - center.x, pts[1][n].p2.y - center.y), cos(glm::radians(-rotateAmount)), sin(glm::radians(-rotateAmount)));
+                        ImVec2 p3 = ImRotate(ImVec2(pts[1][n].p2.x - center.x, pts[1][n].p2.y - center.y), cos(glm::radians(-rotateAmount)), sin(glm::radians(-rotateAmount)));
+                        ImVec2 p4 = ImRotate(ImVec2(pts[1][n].p2.x - center.x, pts[1][n].p1.y - center.y), cos(glm::radians(-rotateAmount)), sin(glm::radians(-rotateAmount)));
+                        draw_list->AddQuad(ImVec2(origin.x + p1.x + center.x, origin.y + p1.y + center.y), ImVec2(origin.x + p2.x + center.x, origin.y + p2.y + center.y), ImVec2(origin.x + p3.x + center.x, origin.y + p3.y + center.y), ImVec2(origin.x + p4.x + center.x, origin.y + p4.y + center.y), ImGui::ColorConvertFloat4ToU32(pts[1][n].color));
+                    }
+                    else
+                        draw_list->AddRect(ImVec2(origin.x + pts[1][n].p1.x, origin.y + pts[1][n].p1.y), ImVec2(origin.x + pts[1][n].p2.x, origin.y + pts[1][n].p2.y), ImGui::ColorConvertFloat4ToU32(pts[1][n].color));
+
                     break;
                 case 2:
                     draw_list->AddCircle(ImVec2(origin.x + pts[2][n].p1.x, origin.y + pts[2][n].p1.y), sqrt(pow(pts[2][n].p1.x - pts[2][n].p2.x, 2) + pow(pts[2][n].p1.y - pts[2][n].p2.y, 2)), ImGui::ColorConvertFloat4ToU32(pts[2][n].color));
