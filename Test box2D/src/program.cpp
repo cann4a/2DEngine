@@ -531,17 +531,17 @@ int main(int argc, char* argv[])
                         case b2_dynamicBody:
                             if (it->second[n].name == "Box")
                                 createBoxObject(origin, it->second[n]);
-                            if (it->second[n].name == "Box")
+                            else if (it->second[n].name == "Box")
                                 createBoxObject(origin, it->second[n]);
-                            if (it->second[n].name == "Ball")
+                            else if (it->second[n].name == "Ball")
                                 createCircleObject(origin, it->second[n]);
                             break;
                         case b2_staticBody:
                             if (it->second[n].name == "Wall")
                                 createWallObject(origin, it->second[n]);
-                            if (it->second[n].name == "Wall")
+                            else if (it->second[n].name == "Wall")
                                 createWallObject(origin, it->second[n]);
-                            if (it->second[n].name == "Ball")
+                            else if (it->second[n].name == "Ball")
                                 createCircleObject(origin, it->second[n]);
                             break;
                         }
