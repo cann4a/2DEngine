@@ -66,9 +66,6 @@
     <ClCompile Include="src\ImGuiFileBrowser.cpp">
       <Filter>File di origine</Filter>
     </ClCompile>
-    <ClCompile Include="src\box2DObject.cpp">
-      <Filter>File di origine</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="glfw3.dll" />

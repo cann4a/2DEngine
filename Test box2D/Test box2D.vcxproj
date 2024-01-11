@@ -135,7 +135,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="src\box2DObject.cpp" />
     <ClCompile Include="src\ImGuiFileBrowser.cpp" />
     <ClCompile Include="src\simulation_manager.cpp" />
     <ClCompile Include="src\framebuffer.cpp" />

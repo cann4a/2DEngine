@@ -85,7 +85,7 @@ public:
 		fixtureDef.shape = &shape;
 		fixtureDef.density = 1.0f;
 		fixtureDef.friction = 0.3f;
-		fixtureDef.restitution = 1.0f;
+		fixtureDef.restitution = 0.5f;
 		fixture = body->CreateFixture(&fixtureDef);
 		setColor(color);
 		setName(name);

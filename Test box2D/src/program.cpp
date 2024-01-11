@@ -449,10 +449,20 @@ int main(int argc, char* argv[])
                     switch (it->second[n].type)
                     {
                     case b2_dynamicBody:
-                        createBoxObject(origin, it->second[n]);
+                        if (it->second[n].name == "Box")
+                            createBoxObject(origin, it->second[n]);
+                        if (it->second[n].name == "Box")
+                            createBoxObject(origin, it->second[n]);
+                        if (it->second[n].name == "Ball")
+                            createCircleObject(origin, it->second[n]);
                         break;
                     case b2_staticBody:
-                        createWallObject(origin, it->second[n]);
+                        if (it->second[n].name == "Wall")
+                            createWallObject(origin, it->second[n]);
+                        if (it->second[n].name == "Wall")
+                            createWallObject(origin, it->second[n]);
+                        if (it->second[n].name == "Ball")
+                            createCircleObject(origin, it->second[n]);
                         break;
                     }
                 }
@@ -660,7 +670,7 @@ void saveCanvasFile(const std::string& filePath, const std::map<int,ImVector<MyS
         for (auto& shape : it->second)
         {
             outfile << "\t\t";
-            outfile << "(" << shape.p1.x << "," << shape.p1.y << ")," << "(" << shape.p2.x << "," << shape.p2.y << "),"
+            outfile << shape.name << "," << "(" << shape.p1.x << ", " << shape.p1.y << "), " << "(" << shape.p2.x << ", " << shape.p2.y << "), "
                 << "(" << shape.color.x << "," << shape.color.y << "," << shape.color.z << "," << shape.color.w << "),"
                 << shape.type << "," << shape.area << " \n";
         }
@@ -684,24 +694,27 @@ void loadCanvasFile(const std::string& filePath, std::map<int, ImVector<MyShape:
             for (unsigned int i = 0; i < buffer.length(); i++)
             {
                 if (buffer[i] == '[')
-                    element_number = int(buffer[i + 1] - '0');
+                    element_number = int(buffer[i + 1] - '0'); // converts char to int
                 else if (buffer[i] == '\t' && buffer[i + 1] == '\t')
                 {
                     std::vector<float> values;
                     std::string b;
+                    std::string name;
                     bool proc_string = false;
                     for (auto& el : buffer)
                     {
-                        if (std::isdigit(el) || el == '.')
+                        if (std::isdigit(el) || el == '.') // retireves numbers
                             b += el;
-                        else if (!std::isdigit(el) && !b.empty())
+                        else if (!std::isdigit(el) && !b.empty()) // saves the number
                         {
                             values.push_back(stof(b));
                             b.clear();
                         }
+                        else if (std::isalpha(el)) // retrieves object's name
+                            name += el;
                     }
                     MyShape::Shape shape = {
-                        "pippo",
+                        name, //name 
                         ImVec2(values[0], values[1]), // p1
                         ImVec2(values[2], values[3]), // p2
                         ImVec4(values[4], values[5], values[6], values[7]), // color
