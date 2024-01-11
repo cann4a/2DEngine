@@ -83,17 +83,17 @@ void SimulationManager::generateRandomBox(const int boxNumber)
     std::uniform_real_distribution<float> r(0.0f, 1.0f); std::uniform_real_distribution<float> g(0.0f, 1.0f); std::uniform_real_distribution<float> b(0.0f, 1.0f);
 
     // boxes creation
-    for (int i = 0; i < boxNumber; i++)
+    /*for (int i = 0; i < boxNumber; i++)
     {
         Box newBox;
         newBox.init(m_world, glm::vec2(xPos(randGenerator), yPos(randGenerator)), glm::vec2(size(randGenerator), size(randGenerator)), b2_dynamicBody);
         newBox.setRotation(glm::radians(rotation(randGenerator)));
         newBox.setColor(glm::vec3(r(randGenerator), g(randGenerator), b(randGenerator)));
         m_boxes.push_back(newBox);
-    }
+    }*/
 }
 
-void SimulationManager::clearBoxes()
+/*void SimulationManager::clearBoxes()
 {
     m_boxes.clear();
     for (b2Body* b = m_world->GetBodyList(); b != nullptr;)
@@ -103,15 +103,15 @@ void SimulationManager::clearBoxes()
             m_world->DestroyBody(b);
         b = next;
     }
-}
+}*/
 
-void SimulationManager::clearLastBox()
+/*void SimulationManager::clearLastBox()
 {
     // the last body created in the world is the first one retrieved with GetBodyList()
     m_world->DestroyBody(m_world->GetBodyList());
-}
+}*/
 
-void SimulationManager::clearWalls()
+/*void SimulationManager::clearWalls()
 {
     m_walls.clear();
     for (b2Body* b = m_world->GetBodyList(); b != nullptr;)
@@ -121,7 +121,25 @@ void SimulationManager::clearWalls()
             m_world->DestroyBody(b);
         b = next;
     }
+}*/
+
+void SimulationManager::clearObjects()
+{
+    m_objects.clear();
+    for (b2Body* b = m_world->GetBodyList(); b != nullptr;)
+    {
+        b2Body* next = b->GetNext();
+        m_world->DestroyBody(b);
+        b = next;
+    }
 }
+
+void SimulationManager::clearLastObject()
+{
+    if(m_world->GetBodyCount())
+        m_world->DestroyBody(m_world->GetBodyList());
+}
+
 
 void SimulationManager::renderBoxes() 
 {

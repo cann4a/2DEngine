@@ -23,12 +23,13 @@
 #include "simulation_manager.h"
 #include "ImGuiFileBrowser.h"
 
-
+#define PI atan(1) * 4
 // structure for hloding shape data for drawing
 // p1: top-left corner, p2: bottom-right corner, color: shape color
 namespace MyShape
 {
     struct Shape {
+        std::string name;
         ImVec2 p1;
         ImVec2 p2;
         ImVec4 color;
@@ -51,7 +52,11 @@ void loadCanvasFile(const std::string& filePath, std::map<int, ImVector<MyShape:
 // creates a box Box2D object from a canva sketch
 void createBoxObject(const ImVec2 origin, const MyShape::Shape& shape);
 // creates a static Box2D object 
-void createStaticObject(const ImVec2 origin, const MyShape::Shape& shape);
+void createWallObject(const ImVec2 origin, const MyShape::Shape& shape);
+// creates a circle Box2D object
+void createCircleObject(const ImVec2 origin, const MyShape::Shape& shape);
+// checks if two points in the canva are overlapping. Returns true if they overlap
+bool checkPointsOverlapping(ImVec2 p1, ImVec2 p2);
 
 // screen dimentions
 const unsigned int SCREEN_WIDTH = 1200;
@@ -102,7 +107,11 @@ int main(int argc, char* argv[])
     // load shaders
     ResourceManager::loadShader("shaders source/vertex.vs", "shaders source/fragment.fs", nullptr, "sprite");
     ResourceManager::loadTexture("textures/container.jpg", false, "container");
+    ResourceManager::loadTexture("textures/bricks2.jpg", false, "bricks");
+    ResourceManager::loadTexture("textures/awesomeface.png", true, "ball");
     ResourceManager::getTexture("container");
+    ResourceManager::getTexture("bricks");
+    ResourceManager::getTexture("ball");
     // configure shaders
     glm::mat4 proj = glm::ortho(0.0f, static_cast<float>(SCREEN_WIDTH), static_cast<float>(SCREEN_HEIGHT),
         0.0f, -1.0f, 0.0f);
@@ -286,35 +295,74 @@ int main(int argc, char* argv[])
         // Add first and second point
         if (is_hovered && !adding_line && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
         {
-            MyShape::Shape shape = { mouse_pos_in_canva, mouse_pos_in_canva, shapeColor };
+            MyShape::Shape shape;
+            shape.p1 = mouse_pos_in_canva;
+            shape.p2 = mouse_pos_in_canva;
+            shape.color = shapeColor;
+            shape.type = isObjectStatic == 0 ? b2_dynamicBody : b2_staticBody;
+            if (current_item == 0 && shape.type == b2_dynamicBody)
+                shape.name = "Box";
+            else if (current_item == 0 && shape.type == b2_staticBody)
+                shape.name = "Wall";
+            else if (current_item == 1 && shape.type == b2_dynamicBody)
+                shape.name = "Box";
+            else if (current_item == 1 && shape.type == b2_staticBody)
+                shape.name = "Wall";
+            else if (current_item == 2)
+                shape.name = "Ball";
+
             pts[current_item].push_back(shape);
             adding_line = true;
         }
         if (adding_line)
         {
             pts[current_item].back().p2 = mouse_pos_in_canva;
-            pts[current_item].back().type = isObjectStatic == 0 ? b2_dynamicBody : b2_staticBody;
-            pts[current_item].back().area = abs(pts[current_item].back().p1.x - pts[current_item].back().p2.x) * abs(pts[current_item].back().p1.y - pts[current_item].back().p2.y);
+            if (pts[current_item].back().name == "Ball")
+                pts[current_item].back().area = PI * pow(sqrt(pow(pts[current_item].back().p1.x - pts[current_item].back().p2.x, 2) + pow((pts[current_item].back().p1.y - pts[current_item].back().p2.y), 2)),2);
+            else
+                pts[current_item].back().area = abs(pts[current_item].back().p1.x - pts[current_item].back().p2.x) * abs(pts[current_item].back().p1.y - pts[current_item].back().p2.y);
             if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) // left mouse button released
             {
                 adding_line = false;
                 // check for too small areas
-                if (pts[1].back().area > 100) // to be changed in order to account for lines
+                if (pts[current_item].back().area > 100 || !checkPointsOverlapping(pts[current_item].back().p1, pts[current_item].back().p2))
                 {
                     switch (isObjectStatic)
                     {
                     case 0:
-                        // generates dynamic box2D boxes from the rectangles in the canva
-                        // we only need to generate the last rectangle added and not all the ones in the canva
-                        createBoxObject(origin, pts[1].back());
+                        // generates dynamic Box2D objects from the objects in the canva
+                        // we only need to generate the last object added and not all the ones in the canva
+                        switch (current_item)
+                        {
+                        case 0:
+                            createBoxObject(origin, pts[current_item].back());
+                            break;
+                        case 1:
+                            createBoxObject(origin, pts[current_item].back());
+                            break;
+                        case 2:
+                            createCircleObject(origin, pts[current_item].back());
+                            break;
+                        }
                         break;
                     case 1:
-                        createStaticObject(origin, pts[current_item].back());
+                        switch (current_item)
+                        {
+                        case 0:
+                            createWallObject(origin, pts[current_item].back());
+                            break;
+                        case 1:
+                            createWallObject(origin, pts[current_item].back());
+                            break;
+                        case 2:
+                            createCircleObject(origin, pts[current_item].back());
+                            break;
+                        }
                         break;
                     }
                 }
                 else
-                    pts[1].resize(pts[1].size() - 1);
+                    pts[current_item].resize(pts[current_item].size() - 1);
             }
         }
         // Pan (we use a zero mouse threshold when there's no context menu)
@@ -336,21 +384,18 @@ int main(int argc, char* argv[])
                 pts[current_item].resize(pts.size() - 1);
             adding_line = false;
             // remove last item added in the canva
-            if (ImGui::MenuItem("Remove one", NULL, false, pts[current_item].Size > 0))
+            if (ImGui::MenuItem("Remove one", NULL, false, pts.size() > 0))
             {
                 pts[current_item].resize(pts[current_item].size() - 1);
-                simulationManager.clearLastBox();
+                simulationManager.clearLastObject();
             }
-            // remove al the items in the canva
+            // remove all the items in the canva
             if (ImGui::MenuItem("Remove all", NULL, false, pts.size() > 0))
             {
                 std::map<int, ImVector<MyShape::Shape>>::iterator it;
                 for (it = pts.begin(); it != pts.end(); it++)
                     it->second.clear();
-                //simulationManager.m_boxes.clear();
-                simulationManager.clearBoxes();
-                //simulationManager.m_walls.clear();
-                simulationManager.clearWalls();
+                simulationManager.clearObjects();
             }
             ImGui::EndPopup();
         }
@@ -407,7 +452,7 @@ int main(int argc, char* argv[])
                         createBoxObject(origin, it->second[n]);
                         break;
                     case b2_staticBody:
-                        createStaticObject(origin, it->second[n]);
+                        createWallObject(origin, it->second[n]);
                         break;
                     }
                 }
@@ -426,8 +471,7 @@ int main(int argc, char* argv[])
         ImGui::Begin("Rendering", nullptr, renderingWindowFlags);
         if (simulationManager.reset)
         {
-           simulationManager.clearBoxes();
-           simulationManager.clearWalls();
+            simulationManager.clearObjects();
            /* regenerates the boxes
            for (int i = 0; i < num_boxes; i++)
            {
@@ -475,28 +519,48 @@ int main(int argc, char* argv[])
                         switch (it->second[n].type)
                         {
                         case b2_dynamicBody:
-                            createBoxObject(origin, it->second[n]);
+                            if (it->second[n].name == "Box")
+                                createBoxObject(origin, it->second[n]);
+                            if (it->second[n].name == "Box")
+                                createBoxObject(origin, it->second[n]);
+                            if (it->second[n].name == "Ball")
+                                createCircleObject(origin, it->second[n]);
                             break;
                         case b2_staticBody:
-                            createStaticObject(origin, it->second[n]);
+                            if (it->second[n].name == "Wall")
+                                createWallObject(origin, it->second[n]);
+                            if (it->second[n].name == "Wall")
+                                createWallObject(origin, it->second[n]);
+                            if (it->second[n].name == "Ball")
+                                createCircleObject(origin, it->second[n]);
                             break;
                         }
                     }
                 }
             }
 
-            for (auto& box : simulationManager.m_boxes)
+            for (auto& object : simulationManager.m_objects)
             {
-                glm::vec2 pos = glm::vec2(box.getBody()->GetPosition().x, box.getBody()->GetPosition().y);
-                glm::vec2 size = box.getDimensions();
-                renderer->drawSpriteBox2D(RENDER_SCALE, ResourceManager::getTexture("container"), pos, size, glm::degrees(box.getBody()->GetAngle()), box.getColor());
+                if (object.getName() == "Box")
+                {
+                    glm::vec2 pos = glm::vec2(object.getBody()->GetPosition().x, object.getBody()->GetPosition().y);
+                    glm::vec2 size = object.getDimensions();
+                    renderer->drawSpriteBox2D(RENDER_SCALE, ResourceManager::getTexture("container"), pos, size, glm::degrees(object.getBody()->GetAngle()), object.getColor());
+                }
+                else if (object.getName() == "Wall")
+                {
+                    glm::vec2 pos = glm::vec2(object.getBody()->GetPosition().x, object.getBody()->GetPosition().y);
+                    glm::vec2 size = object.getDimensions();
+                    renderer->drawSpriteBox2D(RENDER_SCALE, ResourceManager::getTexture("bricks"), pos, size, glm::degrees(object.getBody()->GetAngle()), object.getColor());
+                }
+                else if (object.getName() == "Ball")
+                {
+                    glm::vec2 pos = glm::vec2(object.getBody()->GetPosition().x, object.getBody()->GetPosition().y);
+                    glm::vec2 size = object.getDimensions();
+                    renderer->drawSpriteBox2D(RENDER_SCALE, ResourceManager::getTexture("ball"), pos, size, glm::degrees(object.getBody()->GetAngle()), object.getColor());
+                }
             }
-            for (auto& wall : simulationManager.m_walls)
-            {
-                glm::vec2 pos = glm::vec2(wall.getBody()->GetPosition().x, wall.getBody()->GetPosition().y);
-                glm::vec2 size = wall.getDimensions();
-                renderer->drawSpriteBox2D(RENDER_SCALE, ResourceManager::getTexture("container"), pos, size, glm::degrees(wall.getBody()->GetAngle()), wall.getColor());
-            }
+
             sceneBuffer.unbind();
 
             // perform a step in the simulation
@@ -596,9 +660,9 @@ void saveCanvasFile(const std::string& filePath, const std::map<int,ImVector<MyS
         for (auto& shape : it->second)
         {
             outfile << "\t\t";
-            outfile << "(" << shape.p1.x << "," << shape.p1.y << "), " << "(" << shape.p2.x << "," << shape.p2.y << "), "
-                << "(" << shape.color.x << "," << shape.color.y << "," << shape.color.z << "," << shape.color.w << "), "
-                << shape.type << ", " << shape.area << " \n";
+            outfile << "(" << shape.p1.x << "," << shape.p1.y << ")," << "(" << shape.p2.x << "," << shape.p2.y << "),"
+                << "(" << shape.color.x << "," << shape.color.y << "," << shape.color.z << "," << shape.color.w << "),"
+                << shape.type << "," << shape.area << " \n";
         }
         outfile << "\t}\n";
     }
@@ -637,6 +701,7 @@ void loadCanvasFile(const std::string& filePath, std::map<int, ImVector<MyShape:
                         }
                     }
                     MyShape::Shape shape = {
+                        "pippo",
                         ImVec2(values[0], values[1]), // p1
                         ImVec2(values[2], values[3]), // p2
                         ImVec4(values[4], values[5], values[6], values[7]), // color
@@ -653,13 +718,25 @@ void loadCanvasFile(const std::string& filePath, std::map<int, ImVector<MyShape:
 void createBoxObject(const ImVec2 origin, const MyShape::Shape& shape)
 {
     Box box;
-    box.init(simulationManager.m_world, glm::vec2((shape.p1.x + shape.p2.x) / 2 / RENDER_SCALE, (shape.p1.y + shape.p2.y) / 2 / RENDER_SCALE), glm::vec2(abs(shape.p1.x - shape.p2.x) / RENDER_SCALE, abs(shape.p1.y - shape.p2.y) / RENDER_SCALE), b2_dynamicBody);
-    simulationManager.m_boxes.push_back(box);
+    box.init(simulationManager.m_world, shape.name ,glm::vec2((shape.p1.x + shape.p2.x) / 2 / RENDER_SCALE, (shape.p1.y + shape.p2.y) / 2 / RENDER_SCALE), glm::vec2(abs(shape.p1.x - shape.p2.x) / RENDER_SCALE, abs(shape.p1.y - shape.p2.y) / RENDER_SCALE), b2_dynamicBody);
+    simulationManager.m_objects.push_back(box);
 }
 
-void createStaticObject(const ImVec2 origin, const MyShape::Shape& shape)
+void createWallObject(const ImVec2 origin, const MyShape::Shape& shape)
 {
     Wall wall;
-    wall.init(simulationManager.m_world, glm::vec2((shape.p1.x + shape.p2.x) / 2 / RENDER_SCALE, (shape.p1.y + shape.p2.y) / 2 / RENDER_SCALE), glm::vec2(abs(shape.p1.x - shape.p2.x) / RENDER_SCALE, abs(shape.p1.y - shape.p2.y) / RENDER_SCALE), b2_staticBody);
-    simulationManager.m_walls.push_back(wall);
+    wall.init(simulationManager.m_world, shape.name, glm::vec2((shape.p1.x + shape.p2.x) / 2 / RENDER_SCALE, (shape.p1.y + shape.p2.y) / 2 / RENDER_SCALE), glm::vec2(abs(shape.p1.x - shape.p2.x) / RENDER_SCALE, abs(shape.p1.y - shape.p2.y) / RENDER_SCALE), b2_staticBody);
+    simulationManager.m_objects.push_back(wall);
+}
+
+void createCircleObject(const ImVec2 origin, const MyShape::Shape& shape)
+{
+    Circle circle;
+    circle.init(simulationManager.m_world, shape.name, glm::vec2(shape.p1.x / RENDER_SCALE, shape.p1.y / RENDER_SCALE), sqrt(pow(shape.p1.x - shape.p2.x, 2) + pow(shape.p1.y - shape.p2.y, 2)) / RENDER_SCALE, shape.type);
+    simulationManager.m_objects.push_back(circle);
+}
+
+bool checkPointsOverlapping(ImVec2 p1, ImVec2 p2)
+{
+    return !(p1.x - p2.x && p1.y - p2.y);
 }

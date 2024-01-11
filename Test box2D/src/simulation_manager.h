@@ -11,6 +11,7 @@
 class SimulationManager
 {
 public:
+
 	bool play = false;
 	bool reset = false;
 	bool populate = false;
@@ -19,9 +20,12 @@ public:
 	b2World* m_world;
 	bool gravityOn;
 
-	std::vector<Box> m_boxes;
+	std::vector<Box2DObject> m_objects;
+
+	//std::vector<Box> m_boxes;
 	int boxNumber = 20;
-	std::vector<Wall> m_walls;
+	//std::vector<Wall> m_walls;
+	//std::vector<Circle> m_circles;
 
 	SimulationManager(const float RENDER_SCALE, const unsigned int SCREEN_WIDTH, const unsigned int SCREEN_HEIGHT);
 	~SimulationManager();
@@ -30,12 +34,14 @@ public:
 	void setGravity(const b2Vec2 gravity);
 	void enableGravity();
 	// deletes all the boxes in the world
-	void clearBoxes();
+	//void clearBoxes();
 	// deletes the last box added to the world
-	void clearLastBox();
+	//void clearLastBox();
 	// deletes all the walls
-	void clearWalls();
-	
+	//void clearWalls();
+	void clearLastObject();
+	void clearObjects();
+
 private:
 	b2Vec2 m_gravity;
 	float RENDER_SCALE;
