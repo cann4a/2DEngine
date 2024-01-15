@@ -20,7 +20,7 @@ public:
 	b2World* m_world;
 	bool gravityOn;
 
-	std::vector<Box2DObject> m_objects;
+	std::map<int, std::vector<Box2DObject>> m_objects;
 
 	//std::vector<Box> m_boxes;
 	int boxNumber = 20;
@@ -33,12 +33,6 @@ public:
 	void renderBoxes();
 	void setGravity(const b2Vec2 gravity);
 	void enableGravity();
-	// deletes all the boxes in the world
-	//void clearBoxes();
-	// deletes the last box added to the world
-	//void clearLastBox();
-	// deletes all the walls
-	//void clearWalls();
 	void clearLastObject();
 	void clearObjects();
 

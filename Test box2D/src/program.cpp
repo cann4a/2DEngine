@@ -24,7 +24,7 @@
 #include "ImGuiFileBrowser.h"
 
 #define PI atan(1) * 4
-// structure for hloding shape data for drawing
+// structure for holding shape data for drawing
 // p1: top-left corner, p2: bottom-right corner, color: shape color
 namespace MyShape
 {
@@ -35,6 +35,7 @@ namespace MyShape
         ImVec4 color;
         b2BodyType type;
         float area; 
+        float rotation;
     };
 }
 // callback for registering the pressed keys
@@ -308,6 +309,7 @@ int main(int argc, char* argv[])
         {
             if (selectShape)
             {
+                rotateAmount = 0.0f;
                 selectionShape.p1 = mouse_pos_in_canva;
                 selectionShape.p2 = mouse_pos_in_canva;
                 selectionShape.color = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
@@ -319,6 +321,7 @@ int main(int argc, char* argv[])
                 shape.p2 = mouse_pos_in_canva;
                 shape.color = shapeColor;
                 shape.type = isObjectStatic == 0 ? b2_dynamicBody : b2_staticBody;
+                shape.rotation = 0.0f;
                 if (current_item == 0 && shape.type == b2_dynamicBody)
                     shape.name = "Box";
                 else if (current_item == 0 && shape.type == b2_staticBody)
@@ -453,17 +456,35 @@ int main(int argc, char* argv[])
                     draw_list->AddLine(ImVec2(origin.x + pts[0][n].p1.x, origin.y + pts[0][n].p1.y), ImVec2(origin.x + pts[0][n].p2.x, origin.y + pts[0][n].p2.y), ImGui::ColorConvertFloat4ToU32(pts[0][n].color), 2.0f);
                     break;
                 case 1:
-                        if (rotateShape && isPointInGivenArea(selectionShape, pts_it->second[n].p1) && isPointInGivenArea(selectionShape, pts_it->second[n].p2))
-                        {
-                            ImVec2 center((pts[1][n].p1.x + pts[1][n].p2.x) / 2.0f, (pts[1][n].p1.y + pts[1][n].p2.y) / 2.0f);
-                            ImVec2 p1 = ImRotate(ImVec2(pts[1][n].p1.x - center.x, pts[1][n].p1.y - center.y), cos(glm::radians(-rotateAmount)), sin(glm::radians(-rotateAmount)));
-                            ImVec2 p2 = ImRotate(ImVec2(pts[1][n].p1.x - center.x, pts[1][n].p2.y - center.y), cos(glm::radians(-rotateAmount)), sin(glm::radians(-rotateAmount)));
-                            ImVec2 p3 = ImRotate(ImVec2(pts[1][n].p2.x - center.x, pts[1][n].p2.y - center.y), cos(glm::radians(-rotateAmount)), sin(glm::radians(-rotateAmount)));
-                            ImVec2 p4 = ImRotate(ImVec2(pts[1][n].p2.x - center.x, pts[1][n].p1.y - center.y), cos(glm::radians(-rotateAmount)), sin(glm::radians(-rotateAmount)));
-                            draw_list->AddQuad(ImVec2(origin.x + p1.x + center.x, origin.y + p1.y + center.y), ImVec2(origin.x + p2.x + center.x, origin.y + p2.y + center.y), ImVec2(origin.x + p3.x + center.x, origin.y + p3.y + center.y), ImVec2(origin.x + p4.x + center.x, origin.y + p4.y + center.y), ImGui::ColorConvertFloat4ToU32(pts[1][n].color));
-                        }
-                        else
-                            draw_list->AddRect(ImVec2(origin.x + pts[1][n].p1.x, origin.y + pts[1][n].p1.y), ImVec2(origin.x + pts[1][n].p2.x, origin.y + pts[1][n].p2.y), ImGui::ColorConvertFloat4ToU32(pts[1][n].color));
+                    if (rotateShape && isPointInGivenArea(selectionShape, pts_it->second[n].p1) && isPointInGivenArea(selectionShape, pts_it->second[n].p2))
+                    {
+                        pts[1][n].rotation = rotateAmount;
+                        ImVec2 center((pts[1][n].p1.x + pts[1][n].p2.x) / 2.0f, (pts[1][n].p1.y + pts[1][n].p2.y) / 2.0f);
+                        ImVec2 p1 = ImRotate(ImVec2(pts[1][n].p1.x - center.x, pts[1][n].p1.y - center.y), cos(glm::radians(-rotateAmount)), sin(glm::radians(-rotateAmount)));
+                        ImVec2 p2 = ImRotate(ImVec2(pts[1][n].p1.x - center.x, pts[1][n].p2.y - center.y), cos(glm::radians(-rotateAmount)), sin(glm::radians(-rotateAmount)));
+                        ImVec2 p3 = ImRotate(ImVec2(pts[1][n].p2.x - center.x, pts[1][n].p2.y - center.y), cos(glm::radians(-rotateAmount)), sin(glm::radians(-rotateAmount)));
+                        ImVec2 p4 = ImRotate(ImVec2(pts[1][n].p2.x - center.x, pts[1][n].p1.y - center.y), cos(glm::radians(-rotateAmount)), sin(glm::radians(-rotateAmount)));
+                        draw_list->AddQuad(ImVec2(origin.x + p1.x + center.x, origin.y + p1.y + center.y), ImVec2(origin.x + p2.x + center.x, origin.y + p2.y + center.y), ImVec2(origin.x + p3.x + center.x, origin.y + p3.y + center.y), ImVec2(origin.x + p4.x + center.x, origin.y + p4.y + center.y), ImGui::ColorConvertFloat4ToU32(pts[1][n].color));
+                        
+                        // adjust rotation with mousewheel
+                        if (io.MouseWheel == 1.0)
+                            rotateAmount += 2.5f;
+                        else if (io.MouseWheel == -1.0f)
+                            rotateAmount -= 2.5f;
+
+                        // save rotation to simulation
+                        simulationManager.m_objects[1][n].setRotation(glm::radians(-rotateAmount));
+                    }
+                    else
+                    {
+                        ImVec2 center((pts[1][n].p1.x + pts[1][n].p2.x) / 2.0f, (pts[1][n].p1.y + pts[1][n].p2.y) / 2.0f);
+                        ImVec2 p1 = ImRotate(ImVec2(pts[1][n].p1.x - center.x, pts[1][n].p1.y - center.y), cos(glm::radians(-pts[1][n].rotation)), sin(glm::radians(-pts[1][n].rotation)));
+                        ImVec2 p2 = ImRotate(ImVec2(pts[1][n].p1.x - center.x, pts[1][n].p2.y - center.y), cos(glm::radians(-pts[1][n].rotation)), sin(glm::radians(-pts[1][n].rotation)));
+                        ImVec2 p3 = ImRotate(ImVec2(pts[1][n].p2.x - center.x, pts[1][n].p2.y - center.y), cos(glm::radians(-pts[1][n].rotation)), sin(glm::radians(-pts[1][n].rotation)));
+                        ImVec2 p4 = ImRotate(ImVec2(pts[1][n].p2.x - center.x, pts[1][n].p1.y - center.y), cos(glm::radians(-pts[1][n].rotation)), sin(glm::radians(-pts[1][n].rotation)));
+                        draw_list->AddQuad(ImVec2(origin.x + p1.x + center.x, origin.y + p1.y + center.y), ImVec2(origin.x + p2.x + center.x, origin.y + p2.y + center.y), ImVec2(origin.x + p3.x + center.x, origin.y + p3.y + center.y), ImVec2(origin.x + p4.x + center.x, origin.y + p4.y + center.y), ImGui::ColorConvertFloat4ToU32(pts[1][n].color));
+                    }
+                        //draw_list->AddRect(ImVec2(origin.x + pts[1][n].p1.x, origin.y + pts[1][n].p1.y), ImVec2(origin.x + pts[1][n].p2.x, origin.y + pts[1][n].p2.y), ImGui::ColorConvertFloat4ToU32(pts[1][n].color));
                     break;
                 case 2:
                     draw_list->AddCircle(ImVec2(origin.x + pts[2][n].p1.x, origin.y + pts[2][n].p1.y), sqrt(pow(pts[2][n].p1.x - pts[2][n].p2.x, 2) + pow(pts[2][n].p1.y - pts[2][n].p2.y, 2)), ImGui::ColorConvertFloat4ToU32(pts[2][n].color));
@@ -473,37 +494,7 @@ int main(int argc, char* argv[])
         }
         // draw selection shape if needed and check if a figure is included in the selection box
         if (selectShape)
-        {
             draw_list->AddRect(ImVec2(origin.x + selectionShape.p1.x, origin.y + selectionShape.p1.y), ImVec2(origin.x + selectionShape.p2.x, origin.y + selectionShape.p2.y), ImGui::ColorConvertFloat4ToU32(selectionShape.color));
-            for (pts_it = pts.begin(); pts_it != pts.end(); pts_it++)
-            {
-                for (int n = 0; n < pts_it->second.Size; n++)
-                {
-                    switch (pts_it->first)
-                    {
-                    case 0:
-
-                        break;
-                    case 1:
-                        // check if both p1 and p2 are inside the slection area
-                        if (isPointInGivenArea(selectionShape, pts_it->second[n].p1) && isPointInGivenArea(selectionShape, pts_it->second[n].p2))
-                        {
-                            pts_it->second[n].color = ImVec4(0, 0, 0, 1);
-
-                        }
-                        else
-                        {
-                            pts_it->second[n].color = ImVec4(1, 1, 1, 1);
-                        }
-                            break;
-                    case 2:
-
-                        break;
-                    }
-
-                }
-            }
-        }
 
         draw_list->PopClipRect();
 
@@ -622,25 +613,29 @@ int main(int argc, char* argv[])
                 }
             }
             // reder all the objects in the scene
-            for (auto& object : simulationManager.m_objects)
+            std::map<int, std::vector<Box2DObject>>::iterator it;
+            for (it = simulationManager.m_objects.begin(); it != simulationManager.m_objects.end(); it++)
             {
-                if (object.getName() == "Box")
+                for (int n = 0; n < it->second.size(); n++)
                 {
-                    glm::vec2 pos = glm::vec2(object.getBody()->GetPosition().x, object.getBody()->GetPosition().y);
-                    glm::vec2 size = object.getDimensions();
-                    renderer->drawSpriteBox2D(RENDER_SCALE, ResourceManager::getTexture("container"), pos, size, glm::degrees(object.getBody()->GetAngle()), object.getColor());
-                }
-                else if (object.getName() == "Wall")
-                {
-                    glm::vec2 pos = glm::vec2(object.getBody()->GetPosition().x, object.getBody()->GetPosition().y);
-                    glm::vec2 size = object.getDimensions();
-                    renderer->drawSpriteBox2D(RENDER_SCALE, ResourceManager::getTexture("bricks"), pos, size, glm::degrees(object.getBody()->GetAngle()), object.getColor());
-                }
-                else if (object.getName() == "Ball")
-                {
-                    glm::vec2 pos = glm::vec2(object.getBody()->GetPosition().x, object.getBody()->GetPosition().y);
-                    glm::vec2 size = object.getDimensions();
-                    renderer->drawSpriteBox2D(RENDER_SCALE, ResourceManager::getTexture("ball"), pos, size, glm::degrees(object.getBody()->GetAngle()), object.getColor());
+                    if (it->second[n].getName() == "Box")
+                    {
+                        glm::vec2 pos = glm::vec2(it->second[n].getBody()->GetPosition().x, it->second[n].getBody()->GetPosition().y);
+                        glm::vec2 size = it->second[n].getDimensions();
+                        renderer->drawSpriteBox2D(RENDER_SCALE, ResourceManager::getTexture("container"), pos, size, glm::degrees(it->second[n].getBody()->GetAngle()), it->second[n].getColor());
+                    }
+                    else if (it->second[n].getName() == "Wall")
+                    {
+                        glm::vec2 pos = glm::vec2(it->second[n].getBody()->GetPosition().x, it->second[n].getBody()->GetPosition().y);
+                        glm::vec2 size = it->second[n].getDimensions();
+                        renderer->drawSpriteBox2D(RENDER_SCALE, ResourceManager::getTexture("bricks"), pos, size, glm::degrees(it->second[n].getBody()->GetAngle()), it->second[n].getColor());
+                    }
+                    else if (it->second[n].getName() == "Ball")
+                    {
+                        glm::vec2 pos = glm::vec2(it->second[n].getBody()->GetPosition().x, it->second[n].getBody()->GetPosition().y);
+                        glm::vec2 size = it->second[n].getDimensions();
+                        renderer->drawSpriteBox2D(RENDER_SCALE, ResourceManager::getTexture("ball"), pos, size, glm::degrees(it->second[n].getBody()->GetAngle()), it->second[n].getColor());
+                    }
                 }
             }
 
@@ -745,7 +740,7 @@ void saveCanvasFile(const std::string& filePath, const std::map<int,ImVector<MyS
             outfile << "\t\t";
             outfile << shape.name << "," << "(" << shape.p1.x << ", " << shape.p1.y << "), " << "(" << shape.p2.x << ", " << shape.p2.y << "), "
                 << "(" << shape.color.x << "," << shape.color.y << "," << shape.color.z << "," << shape.color.w << "),"
-                << shape.type << "," << shape.area << " \n";
+                << shape.type << "," << shape.area << "," << shape.rotation << " \n";
         }
         outfile << "\t}\n";
     }
@@ -786,14 +781,14 @@ void loadCanvasFile(const std::string& filePath, std::map<int, ImVector<MyShape:
                         else if (std::isalpha(el)) // retrieves object's name
                             name += el;
                     }
-                    MyShape::Shape shape = {
-                        name, //name 
-                        ImVec2(values[0], values[1]), // p1
-                        ImVec2(values[2], values[3]), // p2
-                        ImVec4(values[4], values[5], values[6], values[7]), // color
-                        (b2BodyType)values[8], // body type
-                        values[9] // area
-                    };  
+                    MyShape::Shape shape;
+                    shape.name = name;
+                    shape.p1 = ImVec2(values[0], values[1]);
+                    shape.p2 = ImVec2(values[2], values[3]);
+                    shape.color = ImVec4(values[4], values[5], values[6], values[7]);
+                    shape.type = (b2BodyType)values[8];
+                    shape.area = values[9];
+                    shape.rotation = values[10];
                     (*pts)[element_number].push_back(shape);
                 }
             }
@@ -805,21 +800,21 @@ void createBoxObject(const ImVec2 origin, const MyShape::Shape& shape)
 {
     Box box;
     box.init(simulationManager.m_world, shape.name ,glm::vec2((shape.p1.x + shape.p2.x) / 2 / RENDER_SCALE, (shape.p1.y + shape.p2.y) / 2 / RENDER_SCALE), glm::vec2(abs(shape.p1.x - shape.p2.x) / RENDER_SCALE, abs(shape.p1.y - shape.p2.y) / RENDER_SCALE), b2_dynamicBody);
-    simulationManager.m_objects.push_back(box);
+    simulationManager.m_objects[1].push_back(box);
 }
 
 void createWallObject(const ImVec2 origin, const MyShape::Shape& shape)
 {
     Wall wall;
     wall.init(simulationManager.m_world, shape.name, glm::vec2((shape.p1.x + shape.p2.x) / 2 / RENDER_SCALE, (shape.p1.y + shape.p2.y) / 2 / RENDER_SCALE), glm::vec2(abs(shape.p1.x - shape.p2.x) / RENDER_SCALE, abs(shape.p1.y - shape.p2.y) / RENDER_SCALE), b2_staticBody);
-    simulationManager.m_objects.push_back(wall);
+    simulationManager.m_objects[1].push_back(wall);
 }
 
 void createCircleObject(const ImVec2 origin, const MyShape::Shape& shape)
 {
     Circle circle;
     circle.init(simulationManager.m_world, shape.name, glm::vec2(shape.p1.x / RENDER_SCALE, shape.p1.y / RENDER_SCALE), sqrt(pow(shape.p1.x - shape.p2.x, 2) + pow(shape.p1.y - shape.p2.y, 2)) / RENDER_SCALE, shape.type);
-    simulationManager.m_objects.push_back(circle);
+    simulationManager.m_objects[2].push_back(circle);
 }
 
 bool checkPointsOverlapping(ImVec2 p1, ImVec2 p2)
