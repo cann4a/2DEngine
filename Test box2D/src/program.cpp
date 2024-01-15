@@ -57,6 +57,9 @@ void createWallObject(const ImVec2 origin, const MyShape::Shape& shape);
 void createCircleObject(const ImVec2 origin, const MyShape::Shape& shape);
 // checks if two points in the canva are overlapping. Returns true if they overlap
 bool checkPointsOverlapping(ImVec2 p1, ImVec2 p2);
+// checks if a point is inside a given rectangluar area
+bool isPointInGivenArea(MyShape::Shape area, ImVec2 point);
+
 
 // screen dimentions
 const unsigned int SCREEN_WIDTH = 1200;
@@ -173,11 +176,11 @@ int main(int argc, char* argv[])
         {{(float)SCREEN_WIDTH / RENDER_SCALE + 10.0f, (float)SCREEN_HEIGHT / RENDER_SCALE / 2.0f}  , {20.0f, (float)SCREEN_HEIGHT / RENDER_SCALE }}, // right
     };
     std::vector<Wall> walls;
-    std::map< std::vector<float>, std::vector<float>>::iterator it;
-    for (it = wallsData.begin(); it != wallsData.end(); it++) 
+    std::map< std::vector<float>, std::vector<float>>::iterator pts_it;
+    for (pts_it = wallsData.begin(); pts_it !=wallsData.end(); pts_it++) 
     {
         Wall wall;
-        wall.init(simulationManager.m_world, glm::vec2(it->first[0], it->first[1]), glm::vec2(it->second[0], it->second[1]));
+        wall.init(simulationManager.m_world, glm::vec2(pts_it->first[0], pts_it->first[1]), glm::vec2(pts_it->second[0], pts_it->second[1]));
         walls.push_back(wall);
     }*/
 
@@ -239,6 +242,8 @@ int main(int argc, char* argv[])
 
         // Canvas variables initialization
         static std::map<int, ImVector<MyShape::Shape>> pts;
+        std::map<int, ImVector<MyShape::Shape>>::iterator pts_it;
+        static MyShape::Shape selectionShape;
         static ImVec2 scrolling(0.0f, 0.0f);
         static bool opt_enable_grid = true;
         static bool opt_enable_context_menu = true;
@@ -275,6 +280,8 @@ int main(int argc, char* argv[])
         static int isObjectStatic;
         ImGui::RadioButton("dynamic", &isObjectStatic, 0); ImGui::SameLine();
         ImGui::RadioButton("static", &isObjectStatic, 1);
+        static bool selectShape;
+        ImGui::Checkbox("Select shape", &selectShape);
 
         // Using InvisibleButton() as a convenience 1) it will advance the layout cursor and 2) allows us to use IsItemHovered()/IsItemActive()
         ImVec2 canva_p0 = ImGui::GetCursorScreenPos();      // ImDrawList API uses screen coordinates!
@@ -299,74 +306,93 @@ int main(int argc, char* argv[])
         // Add first and second point
         if (is_hovered && !adding_line && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
         {
-            MyShape::Shape shape;
-            shape.p1 = mouse_pos_in_canva;
-            shape.p2 = mouse_pos_in_canva;
-            shape.color = shapeColor;
-            shape.type = isObjectStatic == 0 ? b2_dynamicBody : b2_staticBody;
-            if (current_item == 0 && shape.type == b2_dynamicBody)
-                shape.name = "Box";
-            else if (current_item == 0 && shape.type == b2_staticBody)
-                shape.name = "Wall";
-            else if (current_item == 1 && shape.type == b2_dynamicBody)
-                shape.name = "Box";
-            else if (current_item == 1 && shape.type == b2_staticBody)
-                shape.name = "Wall";
-            else if (current_item == 2)
-                shape.name = "Ball";
-
-            pts[current_item].push_back(shape);
+            if (selectShape)
+            {
+                selectionShape.p1 = mouse_pos_in_canva;
+                selectionShape.p2 = mouse_pos_in_canva;
+                selectionShape.color = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+            }
+            else
+            {
+                MyShape::Shape shape;
+                shape.p1 = mouse_pos_in_canva;
+                shape.p2 = mouse_pos_in_canva;
+                shape.color = shapeColor;
+                shape.type = isObjectStatic == 0 ? b2_dynamicBody : b2_staticBody;
+                if (current_item == 0 && shape.type == b2_dynamicBody)
+                    shape.name = "Box";
+                else if (current_item == 0 && shape.type == b2_staticBody)
+                    shape.name = "Wall";
+                else if (current_item == 1 && shape.type == b2_dynamicBody)
+                    shape.name = "Box";
+                else if (current_item == 1 && shape.type == b2_staticBody)
+                    shape.name = "Wall";
+                else if (current_item == 2)
+                    shape.name = "Ball";
+                pts[current_item].push_back(shape);
+            }
+            
             adding_line = true;
         }
         if (adding_line)
         {
-            pts[current_item].back().p2 = mouse_pos_in_canva;
-            if (pts[current_item].back().name == "Ball")
-                pts[current_item].back().area = PI * pow(sqrt(pow(pts[current_item].back().p1.x - pts[current_item].back().p2.x, 2) + pow((pts[current_item].back().p1.y - pts[current_item].back().p2.y), 2)),2);
-            else
-                pts[current_item].back().area = abs(pts[current_item].back().p1.x - pts[current_item].back().p2.x) * abs(pts[current_item].back().p1.y - pts[current_item].back().p2.y);
-            if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) // left mouse button released
+            if (selectShape)
             {
-                adding_line = false;
-                // check for too small areas
-                if (pts[current_item].back().area > 100 || !checkPointsOverlapping(pts[current_item].back().p1, pts[current_item].back().p2))
-                {
-                    switch (isObjectStatic)
-                    {
-                    case 0:
-                        // generates dynamic Box2D objects from the objects in the canva
-                        // we only need to generate the last object added and not all the ones in the canva
-                        switch (current_item)
-                        {
-                        case 0:
-                            createBoxObject(origin, pts[current_item].back());
-                            break;
-                        case 1:
-                            createBoxObject(origin, pts[current_item].back());
-                            break;
-                        case 2:
-                            createCircleObject(origin, pts[current_item].back());
-                            break;
-                        }
-                        break;
-                    case 1:
-                        switch (current_item)
-                        {
-                        case 0:
-                            createWallObject(origin, pts[current_item].back());
-                            break;
-                        case 1:
-                            createWallObject(origin, pts[current_item].back());
-                            break;
-                        case 2:
-                            createCircleObject(origin, pts[current_item].back());
-                            break;
-                        }
-                        break;
-                    }
-                }
+                selectionShape.p2 = mouse_pos_in_canva;
+                if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) // left mouse button released
+                    adding_line = false;
+            }
+            else
+            {
+                pts[current_item].back().p2 = mouse_pos_in_canva;
+                if (pts[current_item].back().name == "Ball")
+                    pts[current_item].back().area = PI * pow(sqrt(pow(pts[current_item].back().p1.x - pts[current_item].back().p2.x, 2) + pow((pts[current_item].back().p1.y - pts[current_item].back().p2.y), 2)), 2);
                 else
-                    pts[current_item].resize(pts[current_item].size() - 1);
+                    pts[current_item].back().area = abs(pts[current_item].back().p1.x - pts[current_item].back().p2.x) * abs(pts[current_item].back().p1.y - pts[current_item].back().p2.y);
+
+                if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) // left mouse button released
+                {
+                    adding_line = false;
+                    // delete figure if area too small or p1 and p2 overlap
+                    if (pts[current_item].back().area > 100 || !checkPointsOverlapping(pts[current_item].back().p1, pts[current_item].back().p2))
+                    {
+                        switch (isObjectStatic)
+                        {
+                        case 0:
+                            // generates dynamic Box2D objects from the objects in the canva
+                            // we only need to generate the last object added and not all the ones in the canva
+                            switch (current_item)
+                            {
+                            case 0:
+                                createBoxObject(origin, pts[current_item].back());
+                                break;
+                            case 1:
+                                createBoxObject(origin, pts[current_item].back());
+                                break;
+                            case 2:
+                                createCircleObject(origin, pts[current_item].back());
+                                break;
+                            }
+                            break;
+                        case 1:
+                            switch (current_item)
+                            {
+                            case 0:
+                                createWallObject(origin, pts[current_item].back());
+                                break;
+                            case 1:
+                                createWallObject(origin, pts[current_item].back());
+                                break;
+                            case 2:
+                                createCircleObject(origin, pts[current_item].back());
+                                break;
+                            }
+                            break;
+                        }
+                    }
+                    else
+                        pts[current_item].resize(pts[current_item].size() - 1);
+                }
             }
         }
         // Pan (we use a zero mouse threshold when there's no context menu)
@@ -396,9 +422,8 @@ int main(int argc, char* argv[])
             // remove all the items in the canva
             if (ImGui::MenuItem("Remove all", NULL, false, pts.size() > 0))
             {
-                std::map<int, ImVector<MyShape::Shape>>::iterator it;
-                for (it = pts.begin(); it != pts.end(); it++)
-                    it->second.clear();
+                for (pts_it = pts.begin(); pts_it !=pts.end(); pts_it++)
+                    pts_it->second.clear();
                 simulationManager.clearObjects();
             }
             ImGui::EndPopup();
@@ -417,29 +442,28 @@ int main(int argc, char* argv[])
             draw_list->AddLine(ImVec2(origin.x - 10.0f, origin.y), ImVec2(origin.x + 10.0f, origin.y), IM_COL32(255, 0, 0, 255));
             draw_list->AddLine(ImVec2(origin.x, origin.y - 10.0f), ImVec2(origin.x, origin.y + 10.0f), IM_COL32(255, 0, 0, 255));
         }
-        std::map<int, ImVector<MyShape::Shape>>::iterator it;
-        for (it = pts.begin(); it != pts.end(); it++)
+        // draw figures to the canva
+        for (pts_it = pts.begin(); pts_it !=pts.end(); pts_it++)
         {
-            for (int n = 0; n < it->second.Size; n++)
+            for (int n = 0; n < pts_it->second.Size; n++)
             {
-                switch (it->first)
+                switch (pts_it->first)
                 {
                 case 0:
                     draw_list->AddLine(ImVec2(origin.x + pts[0][n].p1.x, origin.y + pts[0][n].p1.y), ImVec2(origin.x + pts[0][n].p2.x, origin.y + pts[0][n].p2.y), ImGui::ColorConvertFloat4ToU32(pts[0][n].color), 2.0f);
                     break;
                 case 1:
-                    if (rotateShape)
-                    {
-                        ImVec2 center((pts[1][n].p1.x + pts[1][n].p2.x) / 2.0f, (pts[1][n].p1.y + pts[1][n].p2.y) / 2.0f);
-                        ImVec2 p1 = ImRotate(ImVec2(pts[1][n].p1.x - center.x, pts[1][n].p1.y - center.y), cos(glm::radians(-rotateAmount)), sin(glm::radians(-rotateAmount)));
-                        ImVec2 p2 = ImRotate(ImVec2(pts[1][n].p1.x - center.x, pts[1][n].p2.y - center.y), cos(glm::radians(-rotateAmount)), sin(glm::radians(-rotateAmount)));
-                        ImVec2 p3 = ImRotate(ImVec2(pts[1][n].p2.x - center.x, pts[1][n].p2.y - center.y), cos(glm::radians(-rotateAmount)), sin(glm::radians(-rotateAmount)));
-                        ImVec2 p4 = ImRotate(ImVec2(pts[1][n].p2.x - center.x, pts[1][n].p1.y - center.y), cos(glm::radians(-rotateAmount)), sin(glm::radians(-rotateAmount)));
-                        draw_list->AddQuad(ImVec2(origin.x + p1.x + center.x, origin.y + p1.y + center.y), ImVec2(origin.x + p2.x + center.x, origin.y + p2.y + center.y), ImVec2(origin.x + p3.x + center.x, origin.y + p3.y + center.y), ImVec2(origin.x + p4.x + center.x, origin.y + p4.y + center.y), ImGui::ColorConvertFloat4ToU32(pts[1][n].color));
-                    }
-                    else
-                        draw_list->AddRect(ImVec2(origin.x + pts[1][n].p1.x, origin.y + pts[1][n].p1.y), ImVec2(origin.x + pts[1][n].p2.x, origin.y + pts[1][n].p2.y), ImGui::ColorConvertFloat4ToU32(pts[1][n].color));
-
+                        if (rotateShape && isPointInGivenArea(selectionShape, pts_it->second[n].p1) && isPointInGivenArea(selectionShape, pts_it->second[n].p2))
+                        {
+                            ImVec2 center((pts[1][n].p1.x + pts[1][n].p2.x) / 2.0f, (pts[1][n].p1.y + pts[1][n].p2.y) / 2.0f);
+                            ImVec2 p1 = ImRotate(ImVec2(pts[1][n].p1.x - center.x, pts[1][n].p1.y - center.y), cos(glm::radians(-rotateAmount)), sin(glm::radians(-rotateAmount)));
+                            ImVec2 p2 = ImRotate(ImVec2(pts[1][n].p1.x - center.x, pts[1][n].p2.y - center.y), cos(glm::radians(-rotateAmount)), sin(glm::radians(-rotateAmount)));
+                            ImVec2 p3 = ImRotate(ImVec2(pts[1][n].p2.x - center.x, pts[1][n].p2.y - center.y), cos(glm::radians(-rotateAmount)), sin(glm::radians(-rotateAmount)));
+                            ImVec2 p4 = ImRotate(ImVec2(pts[1][n].p2.x - center.x, pts[1][n].p1.y - center.y), cos(glm::radians(-rotateAmount)), sin(glm::radians(-rotateAmount)));
+                            draw_list->AddQuad(ImVec2(origin.x + p1.x + center.x, origin.y + p1.y + center.y), ImVec2(origin.x + p2.x + center.x, origin.y + p2.y + center.y), ImVec2(origin.x + p3.x + center.x, origin.y + p3.y + center.y), ImVec2(origin.x + p4.x + center.x, origin.y + p4.y + center.y), ImGui::ColorConvertFloat4ToU32(pts[1][n].color));
+                        }
+                        else
+                            draw_list->AddRect(ImVec2(origin.x + pts[1][n].p1.x, origin.y + pts[1][n].p1.y), ImVec2(origin.x + pts[1][n].p2.x, origin.y + pts[1][n].p2.y), ImGui::ColorConvertFloat4ToU32(pts[1][n].color));
                     break;
                 case 2:
                     draw_list->AddCircle(ImVec2(origin.x + pts[2][n].p1.x, origin.y + pts[2][n].p1.y), sqrt(pow(pts[2][n].p1.x - pts[2][n].p2.x, 2) + pow(pts[2][n].p1.y - pts[2][n].p2.y, 2)), ImGui::ColorConvertFloat4ToU32(pts[2][n].color));
@@ -447,42 +471,77 @@ int main(int argc, char* argv[])
                 }
             }
         }
+        // draw selection shape if needed and check if a figure is included in the selection box
+        if (selectShape)
+        {
+            draw_list->AddRect(ImVec2(origin.x + selectionShape.p1.x, origin.y + selectionShape.p1.y), ImVec2(origin.x + selectionShape.p2.x, origin.y + selectionShape.p2.y), ImGui::ColorConvertFloat4ToU32(selectionShape.color));
+            for (pts_it = pts.begin(); pts_it != pts.end(); pts_it++)
+            {
+                for (int n = 0; n < pts_it->second.Size; n++)
+                {
+                    switch (pts_it->first)
+                    {
+                    case 0:
+
+                        break;
+                    case 1:
+                        // check if both p1 and p2 are inside the slection area
+                        if (isPointInGivenArea(selectionShape, pts_it->second[n].p1) && isPointInGivenArea(selectionShape, pts_it->second[n].p2))
+                        {
+                            pts_it->second[n].color = ImVec4(0, 0, 0, 1);
+
+                        }
+                        else
+                        {
+                            pts_it->second[n].color = ImVec4(1, 1, 1, 1);
+                        }
+                            break;
+                    case 2:
+
+                        break;
+                    }
+
+                }
+            }
+        }
+
         draw_list->PopClipRect();
 
         if (show_file_open) ImGui::OpenPopup("Open file");
         if (show_file_save) ImGui::OpenPopup("Save file");
-
+        
+        // load canva from file is needed
         if (file_dialog.showFileDialog("Open file", imgui_addons::ImGuiFileBrowser::DialogMode::OPEN, ImVec2(700, 310), &show_file_open))
         {
             loadCanvasFile(file_dialog.selected_path, &pts);
 
-            std::map<int, ImVector<MyShape::Shape>>::iterator it;
-            for (it = pts.begin(); it != pts.end(); it++)
+            for (pts_it = pts.begin(); pts_it !=pts.end(); pts_it++)
             {
-                for (int n = 0; n < it->second.Size; n++)
+                for (int n = 0; n < pts_it->second.Size; n++)
                 {
-                    switch (it->second[n].type)
+                    switch (pts_it->second[n].type)
                     {
                     case b2_dynamicBody:
-                        if (it->second[n].name == "Box")
-                            createBoxObject(origin, it->second[n]);
-                        if (it->second[n].name == "Box")
-                            createBoxObject(origin, it->second[n]);
-                        if (it->second[n].name == "Ball")
-                            createCircleObject(origin, it->second[n]);
+                        if (pts_it->second[n].name == "Box")
+                            createBoxObject(origin, pts_it->second[n]);
+                        if (pts_it->second[n].name == "Box")
+                            createBoxObject(origin, pts_it->second[n]);
+                        if (pts_it->second[n].name == "Ball")
+                            createCircleObject(origin, pts_it->second[n]);
                         break;
                     case b2_staticBody:
-                        if (it->second[n].name == "Wall")
-                            createWallObject(origin, it->second[n]);
-                        if (it->second[n].name == "Wall")
-                            createWallObject(origin, it->second[n]);
-                        if (it->second[n].name == "Ball")
-                            createCircleObject(origin, it->second[n]);
+                        if (pts_it->second[n].name == "Wall")
+                            createWallObject(origin, pts_it->second[n]);
+                        if (pts_it->second[n].name == "Wall")
+                            createWallObject(origin, pts_it->second[n]);
+                        if (pts_it->second[n].name == "Ball")
+                            createCircleObject(origin, pts_it->second[n]);
                         break;
                     }
                 }
             }
         }
+        // save current canva to file
         if (file_dialog.showFileDialog("Save file", imgui_addons::ImGuiFileBrowser::DialogMode::SAVE, ImVec2(700, 310), &show_file_save))
             saveCanvasFile(file_dialog.selected_path, pts);
 
@@ -529,41 +588,40 @@ int main(int argc, char* argv[])
             {
                 simulationManager.reset = false;
                 /*
-                std::map< std::vector<float>, std::vector<float>>::iterator it1;
+                std::map< std::vector<float>, std::vector<float>>::iterator pts_it1;
                 for (it1 = wallsData.begin(); it1 != wallsData.end(); it1++)
                 {
                     Wall wall;
                     wall.init(simulationManager.m_world, glm::vec2(it1->first[0], it1->first[1]), glm::vec2(it1->second[0], it1->second[1]));
                     walls.push_back(wall);
                 }*/
-                std::map<int, ImVector<MyShape::Shape>>::iterator it;
-                for (it = pts.begin(); it != pts.end(); it++)
+                for (pts_it = pts.begin(); pts_it !=pts.end(); pts_it++)
                 {
-                    for (int n = 0; n < it->second.Size; n++)
+                    for (int n = 0; n < pts_it->second.Size; n++)
                     {
-                        switch (it->second[n].type)
+                        switch (pts_it->second[n].type)
                         {
                         case b2_dynamicBody:
-                            if (it->second[n].name == "Box")
-                                createBoxObject(origin, it->second[n]);
-                            else if (it->second[n].name == "Box")
-                                createBoxObject(origin, it->second[n]);
-                            else if (it->second[n].name == "Ball")
-                                createCircleObject(origin, it->second[n]);
+                            if (pts_it->second[n].name == "Box")
+                                createBoxObject(origin, pts_it->second[n]);
+                            else if (pts_it->second[n].name == "Box")
+                                createBoxObject(origin, pts_it->second[n]);
+                            else if (pts_it->second[n].name == "Ball")
+                                createCircleObject(origin, pts_it->second[n]);
                             break;
                         case b2_staticBody:
-                            if (it->second[n].name == "Wall")
-                                createWallObject(origin, it->second[n]);
-                            else if (it->second[n].name == "Wall")
-                                createWallObject(origin, it->second[n]);
-                            else if (it->second[n].name == "Ball")
-                                createCircleObject(origin, it->second[n]);
+                            if (pts_it->second[n].name == "Wall")
+                                createWallObject(origin, pts_it->second[n]);
+                            else if (pts_it->second[n].name == "Wall")
+                                createWallObject(origin, pts_it->second[n]);
+                            else if (pts_it->second[n].name == "Ball")
+                                createCircleObject(origin, pts_it->second[n]);
                             break;
                         }
                     }
                 }
             }
-
+            // reder all the objects in the scene
             for (auto& object : simulationManager.m_objects)
             {
                 if (object.getName() == "Box")
@@ -678,11 +736,11 @@ void saveCanvasFile(const std::string& filePath, const std::map<int,ImVector<MyS
 
     outfile << "{" << '\n';
 
-    std::map<int, ImVector<MyShape::Shape>>::const_iterator it;
-    for (it = pts.begin(); it != pts.end(); it++)
+    std::map<int, ImVector<MyShape::Shape>>::const_iterator pts_it;
+    for (pts_it = pts.begin(); pts_it !=pts.end(); pts_it++)
     {
-        outfile << "\t[" << it->first << "]:\n\t{\n";
-        for (auto& shape : it->second)
+        outfile << "\t[" << pts_it->first << "]:\n\t{\n";
+        for (auto& shape : pts_it->second)
         {
             outfile << "\t\t";
             outfile << shape.name << "," << "(" << shape.p1.x << ", " << shape.p1.y << "), " << "(" << shape.p2.x << ", " << shape.p2.y << "), "
@@ -767,4 +825,14 @@ void createCircleObject(const ImVec2 origin, const MyShape::Shape& shape)
 bool checkPointsOverlapping(ImVec2 p1, ImVec2 p2)
 {
     return !(p1.x - p2.x && p1.y - p2.y);
+}
+
+bool isPointInGivenArea(MyShape::Shape area, ImVec2 point)
+{
+    // reference to https://math.stackexchange.com/questions/190111/how-to-check-if-a-point-is-inside-a-rectangle
+    glm::vec2 pt(point.x, point.y);
+    glm::vec2 AM(pt - glm::vec2(area.p1.x, area.p1.y));
+    glm::vec2 AB(glm::vec2(area.p2.x, area.p1.y) - glm::vec2(area.p1.x, area.p1.y));
+    glm::vec2 AD(glm::vec2(area.p1.x, area.p2.y) - glm::vec2(area.p1.x, area.p1.y));
+    return 0 < glm::dot(AM, AB) && glm::dot(AM, AB) < glm::dot(AB, AB) && 0 < glm::dot(AM, AD) && glm::dot(AM, AD) < glm::dot(AD, AD);
 }
