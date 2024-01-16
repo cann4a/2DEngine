@@ -8,7 +8,7 @@ SpriteRenderer::SpriteRenderer(Shader& shader)
 
 SpriteRenderer::~SpriteRenderer()
 {
-	glDeleteVertexArrays(1, &this->quadVAO);
+	glDeleteVertexArrays(1, &this->quad_VAO);
 }
 
 void SpriteRenderer::initRenderData() {
@@ -23,13 +23,13 @@ void SpriteRenderer::initRenderData() {
 		1.0f, 1.0f, 1.0f, 1.0f
 	};
 
-	glGenVertexArrays(1, &quadVAO);
+	glGenVertexArrays(1, &quad_VAO);
 	glGenBuffers(1, &VBO);
 
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-	glBindVertexArray(quadVAO);
+	glBindVertexArray(quad_VAO);
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
 	
@@ -52,13 +52,13 @@ void SpriteRenderer::drawSprite(Texture2D& texture, glm::vec2 position,
 	model = glm::translate(model, glm::vec3(-0.5 * size.x, -0.5 * size.y, 0.0));
 	model = glm::scale(model, glm::vec3(size, 1.0f));
 	
-	shader.SetMatrix4("model", model);
-	shader.SetVector3f("spriteColor", color);
+	shader.setMatrix4("model", model);
+	shader.setVector3f("spriteColor", color);
 
 	glActiveTexture(GL_TEXTURE0);
 	texture.bind();
 
-	glBindVertexArray(quadVAO);
+	glBindVertexArray(quad_VAO);
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 	glBindVertexArray(0);
 }
@@ -78,23 +78,23 @@ void SpriteRenderer::drawSpriteNoTexture(glm::vec2 position,
 	model = glm::translate(model, glm::vec3(-0.5 * size.x, -0.5 * size.y, 0.0));
 	model = glm::scale(model, glm::vec3(size, 1.0f));
 
-	shader.SetMatrix4("model", model);
-	shader.SetVector3f("spriteColor", color);
+	shader.setMatrix4("model", model);
+	shader.setVector3f("spriteColor", color);
 
-	glBindVertexArray(quadVAO);
+	glBindVertexArray(quad_VAO);
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 	glBindVertexArray(0);
 }
 
-// Renders a sprite from position and size given by Box2D objects. The renderScale serves the 
+// Renders a sprite from position and size given by Box2D objects. The render_scale serves the 
 // purpose of scaling the box2D dimensions such that they are drawable on the viewPort. 
-void SpriteRenderer::drawSpriteBox2D(float renderScale, Texture2D& texture, glm::vec2 position,
+void SpriteRenderer::drawSpriteBox2D(float render_scale, Texture2D& texture, glm::vec2 position,
 	glm::vec2 size, float rotate, glm::vec3 color) {
 	
 	// prepare tranformations
 	// ----------------------
-	glm::vec2 _position = renderScale * position;
-	glm::vec2 _size = renderScale * size;
+	glm::vec2 _position = render_scale * position;
+	glm::vec2 _size = render_scale * size;
 	shader.use();
 	glm::mat4 model = glm::mat4(1.0f);
 	model = glm::translate(model, glm::vec3(_position, 0.0f));
@@ -102,13 +102,13 @@ void SpriteRenderer::drawSpriteBox2D(float renderScale, Texture2D& texture, glm:
 	model = glm::translate(model, glm::vec3(-0.5 * _size.x, -0.5 * _size.y, 0.0));
 	model = glm::scale(model, glm::vec3(_size, 1.0f));
 
-	shader.SetMatrix4("model", model);
-	shader.SetVector3f("spriteColor", color);
+	shader.setMatrix4("model", model);
+	shader.setVector3f("spriteColor", color);
 
 	glActiveTexture(GL_TEXTURE0);
 	texture.bind();
 
-	glBindVertexArray(quadVAO);
+	glBindVertexArray(quad_VAO);
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 	glBindVertexArray(0);
 

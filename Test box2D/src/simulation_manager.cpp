@@ -12,7 +12,7 @@ SimulationManager::SimulationManager(const float RENDER_SCALE, const unsigned in
     this->SCREEN_WIDTH = SCREEN_WIDTH;
     this->SCREEN_HEIGHT = SCREEN_HEIGHT;
 
-    gravityOn = true;
+    gravity_on = true;
 	m_gravity = b2Vec2(0.0f, 10.0f);
 	m_world = new b2World(m_gravity);
 }
@@ -23,7 +23,7 @@ void SimulationManager::setGravity(const b2Vec2 gravity)
 }
 void SimulationManager::enableGravity()
 {
-    if (gravityOn)
+    if (gravity_on)
         m_world->SetGravity(m_gravity);
     else
         m_world->SetGravity(b2Vec2_zero);

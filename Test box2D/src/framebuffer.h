@@ -12,6 +12,6 @@ public:
 	void unbind() const;
 private:
 	unsigned int FBO, RBO;
-	unsigned int textureID;
+	unsigned int texture_ID;
 };
 

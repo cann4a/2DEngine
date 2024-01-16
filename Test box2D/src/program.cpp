@@ -12,7 +12,6 @@
 #include <cctype>
 #include "resource_manager.h"
 #include "sprite_renderer.h"
-#include "game_object.h"
 #include "texture.h"
 #include <glm/glm.hpp> 
 #include <imgui/imgui.h>
@@ -40,15 +39,15 @@
 // callback for registering the pressed keys
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
 // callback for resizing the viewport when the window is resized
-void window_size_callback_static(GLFWwindow* window, int width, int height);
+void windowSizeCallback(GLFWwindow* window, int width, int height);
 // callback for registering the mouse buttons
-void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
+void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
 // limits the FPS to a given amount
-void limitFPS(double* lastTime, float targetFPS);
+void limitFPS(double* last_time, float targetFPS);
 // save a canva sketch to file
-void saveCanvasFile(const std::string& filePath, const std::map<int, ImVector<Shape_t>>& pts);
+void saveCanvasFile(const std::string& filePath, const std::map<int, ImVector<Shape_t>>& shapes);
 // loads a canva sketch form file
-void loadCanvasFile(const std::string& filePath, std::map<int, ImVector<Shape_t>>* pts);
+void loadCanvasFile(const std::string& filePath, std::map<int, ImVector<Shape_t>>* shapes);
 // creates a box Box2D object from a canva sketch
 void createBoxObject(const ImVec2 origin, const Shape_t& shape);
 // creates a static Box2D object 
@@ -75,13 +74,13 @@ const float TARGET_FPS = 60.0f;
 // Arrays for storing pressed and processed keys
 bool keys[1024];
 bool keysProcessed[1024];
-bool mouseKeys[3];
-bool mouseKeysProcessed[3];
+bool mouse_keys[3];
+bool mouse_keys_processed[3];
 
 // Instanciate a custom framebuffer and a simulation manager. The former is used for rendering the simultation, while the latter
 // manages the simulation objects and parameters 
-FrameBuffer sceneBuffer = FrameBuffer();
-SimulationManager simulationManager = SimulationManager(RENDER_SCALE, SCREEN_WIDTH, SCREEN_HEIGHT);
+FrameBuffer scene_buffer = FrameBuffer();
+SimulationManager simulation_manager = SimulationManager(RENDER_SCALE, SCREEN_WIDTH, SCREEN_HEIGHT);
 
 int main(int argc, char* argv[]) 
 {
@@ -107,8 +106,8 @@ int main(int argc, char* argv[])
     }
 
     glfwSetKeyCallback(window, key_callback);
-    glfwSetWindowSizeCallback(window, window_size_callback_static);
-    glfwSetMouseButtonCallback(window, mouse_button_callback);
+    glfwSetWindowSizeCallback(window, windowSizeCallback);
+    glfwSetMouseButtonCallback(window, mouseButtonCallback);
 
     // load shaders
     ResourceManager::loadShader("shaders source/vertex.vs", "shaders source/fragment.fs", nullptr, "sprite");
@@ -124,7 +123,7 @@ int main(int argc, char* argv[])
     ResourceManager::getShader("sprite").use().SetInteger("image", 0);
     ResourceManager::getShader("sprite").use().SetMatrix4("projection", proj);
 
-    double lastTime = glfwGetTime();
+    double last_time = glfwGetTime();
     SpriteRenderer* renderer = new SpriteRenderer(ResourceManager::getShader("sprite"));
 
     // GUI initialization
@@ -156,26 +155,26 @@ int main(int argc, char* argv[])
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 330");
     
-    ImGuiWindowFlags renderingWindowFlags = 0;
-    ImGuiWindowFlags canvaWindowFlags = 0;
+    ImGuiWindowFlags rendering_window_flags = 0;
+    ImGuiWindowFlags canva_window_flags = 0;
 
-    /*renderingWindowFlags |= ImGuiWindowFlags_NoResize;
-    renderingWindowFlags |= ImGuiWindowFlags_NoMove;
-    renderingWindowFlags |= ImGuiWindowFlags_NoCollapse;
-    renderingWindowFlags |= ImGuiWindowFlags_NoScrollbar;
-    renderingWindowFlags |= ImGuiWindowFlags_NoTitleBar;*/
+    /*rendering_window_flags |= ImGuiWindowFlags_NoResize;
+    rendering_window_flags |= ImGuiWindowFlags_NoMove;
+    rendering_window_flags |= ImGuiWindowFlags_NoCollapse;
+    rendering_window_flags |= ImGuiWindowFlags_NoScrollbar;
+    rendering_window_flags |= ImGuiWindowFlags_NoTitleBar;*/
 
-    canvaWindowFlags |= ImGuiWindowFlags_MenuBar;
+    canva_window_flags |= ImGuiWindowFlags_MenuBar;
 
     // file dialog initializaxtino for saving and opening files
     imgui_addons::ImGuiFileBrowser file_dialog;
 
     // buffer initialization for rendering the simulation
-    sceneBuffer.init(SCREEN_WIDTH, SCREEN_HEIGHT);
+    scene_buffer.init(SCREEN_WIDTH, SCREEN_HEIGHT);
 
     // ImGUI initial color settings
-    ImVec4 clearColor = ImVec4(0.3f, 0.4f, 0.8f, 1.0f);
-    ImVec4 shapeColor = ImVec4(1.0f, 0.0f, 0.5f, 1.0f);
+    ImVec4 clear_color = ImVec4(0.3f, 0.4f, 0.8f, 1.0f);
+    ImVec4 shape_color = ImVec4(1.0f, 0.0f, 0.5f, 1.0f);
 
     while (!glfwWindowShouldClose(window)) 
     {
@@ -196,36 +195,36 @@ int main(int argc, char* argv[])
         ImGui::Begin("Control");
         if (ImGui::Button("Play")) 
         {
-            simulationManager.play = true;
-            simulationManager.simulate = true;
+            simulation_manager.play = true;
+            simulation_manager.simulate = true;
         }
         ImGui::SameLine();
         if (ImGui::Button("Stop"))
         {
-            simulationManager.simulate = false;
+            simulation_manager.simulate = false;
         }
        
         if (ImGui::Button("Reset")) 
         {
-            simulationManager.reset = true;
-            simulationManager.play = false;
+            simulation_manager.reset = true;
+            simulation_manager.play = false;
         }
         ImGui::SameLine(ImGui::GetWindowWidth() - 130.0f);
-        if (ImGui::Checkbox("Enable gravity", &simulationManager.gravityOn))
-            simulationManager.enableGravity();
+        if (ImGui::Checkbox("Enable gravity", &simulation_manager.gravity_on))
+            simulation_manager.enableGravity();
 
-        ImGui::ColorEdit3("background color", (float*)&clearColor);
+        ImGui::ColorEdit3("background color", (float*)&clear_color);
 
         ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
         ImGui::End();
 
         // canva for drawing shapes 
-        ImGui::Begin("Canva", nullptr, canvaWindowFlags);
+        ImGui::Begin("Canva", nullptr, canva_window_flags);
 
         // Canvas variables initialization
-        static std::map<int, ImVector<Shape_t>> pts;
-        std::map<int, ImVector<Shape_t>>::iterator pts_it;
-        static Shape_t selectionShape;
+        static std::map<int, ImVector<Shape_t>> shapes;
+        std::map<int, ImVector<Shape_t>>::iterator shapes_it;
+        static Shape_t selection_shape;
         static ImVec2 scrolling(0.0f, 0.0f);
         static bool opt_enable_grid = true;
         static bool opt_enable_context_menu = true;
@@ -252,18 +251,18 @@ int main(int argc, char* argv[])
         ImGui::Checkbox("Enable grid", &opt_enable_grid);
         ImGui::Checkbox("Enable context menu", &opt_enable_context_menu);
         ImGui::Text("Mouse Left: drag to add lines,\nMouse Right: drag to scroll, click for context menu.");
-        ImGui::ColorEdit3("shape color", (float*)&shapeColor); ImGui::SameLine();
-        static bool rotateShape;
-        static float rotateAmount;
-        ImGui::Checkbox("Rotate", &rotateShape); ImGui::SameLine();
-        ImGui::InputFloat("Degrees", &rotateAmount, 0.0f, 2 * PI);
+        ImGui::ColorEdit3("shape color", (float*)&shape_color); ImGui::SameLine();
+        static bool rotate_shape;
+        static float rotate_amount;
+        ImGui::Checkbox("Rotate", &rotate_shape); ImGui::SameLine();
+        ImGui::InputFloat("Degrees", &rotate_amount, 0.0f, 2 * PI);
         ImGui::Combo("Shape selection", &current_item, items, IM_ARRAYSIZE(items)); ImGui::SameLine();
         // flag for drawing static and dynamic objects in the canva
-        static int isObjectStatic;
-        ImGui::RadioButton("dynamic", &isObjectStatic, 0); ImGui::SameLine();
-        ImGui::RadioButton("static", &isObjectStatic, 1);
-        static bool selectShape;
-        ImGui::Checkbox("Select shape", &selectShape);
+        static int is_object_static;
+        ImGui::RadioButton("dynamic", &is_object_static, 0); ImGui::SameLine();
+        ImGui::RadioButton("static", &is_object_static, 1);
+        static bool select_shape;
+        ImGui::Checkbox("Select shape", &select_shape);
 
         // Using InvisibleButton() as a convenience 1) it will advance the layout cursor and 2) allows us to use IsItemHovered()/IsItemActive()
         ImVec2 canva_p0 = ImGui::GetCursorScreenPos();      // ImDrawList API uses screen coordinates!
@@ -288,20 +287,20 @@ int main(int argc, char* argv[])
         // Add first and second point
         if (is_hovered && !adding_line && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
         {
-            if (selectShape)
+            if (select_shape)
             {
-                rotateAmount = 0.0f;
-                selectionShape.p1 = mouse_pos_in_canva;
-                selectionShape.p2 = mouse_pos_in_canva;
-                selectionShape.color = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+                rotate_amount = 0.0f;
+                selection_shape.p1 = mouse_pos_in_canva;
+                selection_shape.p2 = mouse_pos_in_canva;
+                selection_shape.color = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
             }
             else
             {
                 Shape_t shape;
                 shape.p1 = mouse_pos_in_canva;
                 shape.p2 = mouse_pos_in_canva;
-                shape.color = shapeColor;
-                shape.type = isObjectStatic == 0 ? b2_dynamicBody : b2_staticBody;
+                shape.color = shape_color;
+                shape.type = is_object_static == 0 ? b2_dynamicBody : b2_staticBody;
                 shape.rotation = 0.0f;
                 if (current_item == 0 && shape.type == b2_dynamicBody)
                     shape.name = "Box";
@@ -313,34 +312,34 @@ int main(int argc, char* argv[])
                     shape.name = "Wall";
                 else if (current_item == 2)
                     shape.name = "Ball";
-                pts[current_item].push_back(shape);
+                shapes[current_item].push_back(shape);
             }
             
             adding_line = true;
         }
         if (adding_line)
         {
-            if (selectShape)
+            if (select_shape)
             {
-                selectionShape.p2 = mouse_pos_in_canva;
+                selection_shape.p2 = mouse_pos_in_canva;
                 if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) // left mouse button released
                     adding_line = false;
             }
             else
             {
-                pts[current_item].back().p2 = mouse_pos_in_canva;
-                if (pts[current_item].back().name == "Ball")
-                    pts[current_item].back().area = PI * pow(sqrt(pow(pts[current_item].back().p1.x - pts[current_item].back().p2.x, 2) + pow((pts[current_item].back().p1.y - pts[current_item].back().p2.y), 2)), 2);
+                shapes[current_item].back().p2 = mouse_pos_in_canva;
+                if (shapes[current_item].back().name == "Ball")
+                    shapes[current_item].back().area = PI * pow(sqrt(pow(shapes[current_item].back().p1.x - shapes[current_item].back().p2.x, 2) + pow((shapes[current_item].back().p1.y - shapes[current_item].back().p2.y), 2)), 2);
                 else
-                    pts[current_item].back().area = abs(pts[current_item].back().p1.x - pts[current_item].back().p2.x) * abs(pts[current_item].back().p1.y - pts[current_item].back().p2.y);
+                    shapes[current_item].back().area = abs(shapes[current_item].back().p1.x - shapes[current_item].back().p2.x) * abs(shapes[current_item].back().p1.y - shapes[current_item].back().p2.y);
 
                 if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) // left mouse button released
                 {
                     adding_line = false;
                     // delete figure if area too small or p1 and p2 overlap
-                    if (pts[current_item].back().area > 100 || !checkPointsOverlapping(pts[current_item].back().p1, pts[current_item].back().p2))
+                    if (shapes[current_item].back().area > 100 || !checkPointsOverlapping(shapes[current_item].back().p1, shapes[current_item].back().p2))
                     {
-                        switch (isObjectStatic)
+                        switch (is_object_static)
                         {
                         case 0:
                             // generates dynamic Box2D objects from the objects in the canva
@@ -348,13 +347,13 @@ int main(int argc, char* argv[])
                             switch (current_item)
                             {
                             case 0:
-                                createBoxObject(origin, pts[current_item].back());
+                                createBoxObject(origin, shapes[current_item].back());
                                 break;
                             case 1:
-                                createBoxObject(origin, pts[current_item].back());
+                                createBoxObject(origin, shapes[current_item].back());
                                 break;
                             case 2:
-                                createCircleObject(origin, pts[current_item].back());
+                                createCircleObject(origin, shapes[current_item].back());
                                 break;
                             }
                             break;
@@ -362,20 +361,20 @@ int main(int argc, char* argv[])
                             switch (current_item)
                             {
                             case 0:
-                                createWallObject(origin, pts[current_item].back());
+                                createWallObject(origin, shapes[current_item].back());
                                 break;
                             case 1:
-                                createWallObject(origin, pts[current_item].back());
+                                createWallObject(origin, shapes[current_item].back());
                                 break;
                             case 2:
-                                createCircleObject(origin, pts[current_item].back());
+                                createCircleObject(origin, shapes[current_item].back());
                                 break;
                             }
                             break;
                         }
                     }
                     else
-                        pts[current_item].resize(pts[current_item].size() - 1);
+                        shapes[current_item].resize(shapes[current_item].size() - 1);
                 }
             }
         }
@@ -395,20 +394,20 @@ int main(int argc, char* argv[])
         if (ImGui::BeginPopup("context"))
         {
             if (adding_line)
-                pts[current_item].resize(pts.size() - 1);
+                shapes[current_item].resize(shapes.size() - 1);
             adding_line = false;
             // remove last item added in the canva
-            if (ImGui::MenuItem("Remove one", NULL, false, pts.size() > 0))
+            if (ImGui::MenuItem("Remove one", NULL, false, shapes.size() > 0))
             {
-                pts[current_item].resize(pts[current_item].size() - 1);
-                simulationManager.clearLastObject();
+                shapes[current_item].resize(shapes[current_item].size() - 1);
+                simulation_manager.clearLastObject();
             }
             // remove all the items in the canva
-            if (ImGui::MenuItem("Remove all", NULL, false, pts.size() > 0))
+            if (ImGui::MenuItem("Remove all", NULL, false, shapes.size() > 0))
             {
-                for (pts_it = pts.begin(); pts_it !=pts.end(); pts_it++)
-                    pts_it->second.clear();
-                simulationManager.clearObjects();
+                for (shapes_it = shapes.begin(); shapes_it !=shapes.end(); shapes_it++)
+                    shapes_it->second.clear();
+                simulation_manager.clearObjects();
             }
             ImGui::EndPopup();
         }
@@ -427,40 +426,40 @@ int main(int argc, char* argv[])
             draw_list->AddLine(ImVec2(origin.x, origin.y - 10.0f), ImVec2(origin.x, origin.y + 10.0f), IM_COL32(255, 0, 0, 255));
         }
         // draw figures to the canva
-        for (pts_it = pts.begin(); pts_it !=pts.end(); pts_it++)
+        for (shapes_it = shapes.begin(); shapes_it !=shapes.end(); shapes_it++)
         {
-            for (int n = 0; n < pts_it->second.Size; n++)
+            for (int n = 0; n < shapes_it->second.Size; n++)
             {
-                switch (pts_it->first)
+                switch (shapes_it->first)
                 {
                 case 0:
-                    draw_list->AddLine(ImVec2(origin.x + pts[0][n].p1.x, origin.y + pts[0][n].p1.y), ImVec2(origin.x + pts[0][n].p2.x, origin.y + pts[0][n].p2.y), ImGui::ColorConvertFloat4ToU32(pts[0][n].color), 2.0f);
+                    draw_list->AddLine(ImVec2(origin.x + shapes[0][n].p1.x, origin.y + shapes[0][n].p1.y), ImVec2(origin.x + shapes[0][n].p2.x, origin.y + shapes[0][n].p2.y), ImGui::ColorConvertFloat4ToU32(shapes[0][n].color), 2.0f);
                     break;
                 case 1:
-                    if (selectShape && isPointInGivenArea(selectionShape, pts_it->second[n].p1) && isPointInGivenArea(selectionShape, pts_it->second[n].p2))
+                    if (select_shape && isPointInGivenArea(selection_shape, shapes_it->second[n].p1) && isPointInGivenArea(selection_shape, shapes_it->second[n].p2))
                     {
-                        pts[1][n].rotation = rotateAmount;
+                        shapes[1][n].rotation = rotate_amount;
 
                         // adjust rotation with mousewheel
                         if (io.MouseWheel == 1.0)
-                            rotateAmount += 2.5f;
+                            rotate_amount += 2.5f;
                         else if (io.MouseWheel == -1.0f)
-                            rotateAmount -= 2.5f;
+                            rotate_amount -= 2.5f;
 
                         // save rotation to simulation
-                        simulationManager.m_objects[1][n].setRotation(glm::radians(-rotateAmount));
+                        simulation_manager.m_objects[1][n].setRotation(glm::radians(-rotate_amount));
                     }
-                    drawRotatedQuad(draw_list, origin, pts[1][n]);
+                    drawRotatedQuad(draw_list, origin, shapes[1][n]);
                     break;
                 case 2:
-                    draw_list->AddCircle(ImVec2(origin.x + pts[2][n].p1.x, origin.y + pts[2][n].p1.y), sqrt(pow(pts[2][n].p1.x - pts[2][n].p2.x, 2) + pow(pts[2][n].p1.y - pts[2][n].p2.y, 2)), ImGui::ColorConvertFloat4ToU32(pts[2][n].color));
+                    draw_list->AddCircle(ImVec2(origin.x + shapes[2][n].p1.x, origin.y + shapes[2][n].p1.y), sqrt(pow(shapes[2][n].p1.x - shapes[2][n].p2.x, 2) + pow(shapes[2][n].p1.y - shapes[2][n].p2.y, 2)), ImGui::ColorConvertFloat4ToU32(shapes[2][n].color));
                     break;
                 }
             }
         }
         // draw selection shape if needed and check if a figure is included in the selection box
-        if (selectShape)
-            draw_list->AddRect(ImVec2(origin.x + selectionShape.p1.x, origin.y + selectionShape.p1.y), ImVec2(origin.x + selectionShape.p2.x, origin.y + selectionShape.p2.y), ImGui::ColorConvertFloat4ToU32(selectionShape.color));
+        if (select_shape)
+            draw_list->AddRect(ImVec2(origin.x + selection_shape.p1.x, origin.y + selection_shape.p1.y), ImVec2(origin.x + selection_shape.p2.x, origin.y + selection_shape.p2.y), ImGui::ColorConvertFloat4ToU32(selection_shape.color));
 
         draw_list->PopClipRect();
 
@@ -470,29 +469,29 @@ int main(int argc, char* argv[])
         // load canva from file is needed
         if (file_dialog.showFileDialog("Open file", imgui_addons::ImGuiFileBrowser::DialogMode::OPEN, ImVec2(700, 310), &show_file_open))
         {
-            loadCanvasFile(file_dialog.selected_path, &pts);
+            loadCanvasFile(file_dialog.selected_path, &shapes);
 
-            for (pts_it = pts.begin(); pts_it !=pts.end(); pts_it++)
+            for (shapes_it = shapes.begin(); shapes_it !=shapes.end(); shapes_it++)
             {
-                for (int n = 0; n < pts_it->second.Size; n++)
+                for (int n = 0; n < shapes_it->second.Size; n++)
                 {
-                    switch (pts_it->second[n].type)
+                    switch (shapes_it->second[n].type)
                     {
                     case b2_dynamicBody:
-                        if (pts_it->second[n].name == "Box")
-                            createBoxObject(origin, pts_it->second[n]);
-                        if (pts_it->second[n].name == "Box")
-                            createBoxObject(origin, pts_it->second[n]);
-                        if (pts_it->second[n].name == "Ball")
-                            createCircleObject(origin, pts_it->second[n]);
+                        if (shapes_it->second[n].name == "Box")
+                            createBoxObject(origin, shapes_it->second[n]);
+                        if (shapes_it->second[n].name == "Box")
+                            createBoxObject(origin, shapes_it->second[n]);
+                        if (shapes_it->second[n].name == "Ball")
+                            createCircleObject(origin, shapes_it->second[n]);
                         break;
                     case b2_staticBody:
-                        if (pts_it->second[n].name == "Wall")
-                            createWallObject(origin, pts_it->second[n]);
-                        if (pts_it->second[n].name == "Wall")
-                            createWallObject(origin, pts_it->second[n]);
-                        if (pts_it->second[n].name == "Ball")
-                            createCircleObject(origin, pts_it->second[n]);
+                        if (shapes_it->second[n].name == "Wall")
+                            createWallObject(origin, shapes_it->second[n]);
+                        if (shapes_it->second[n].name == "Wall")
+                            createWallObject(origin, shapes_it->second[n]);
+                        if (shapes_it->second[n].name == "Ball")
+                            createCircleObject(origin, shapes_it->second[n]);
                         break;
                     }
                 }
@@ -500,7 +499,7 @@ int main(int argc, char* argv[])
         }
         // save current canva to file
         if (file_dialog.showFileDialog("Save file", imgui_addons::ImGuiFileBrowser::DialogMode::SAVE, ImVec2(700, 310), &show_file_save))
-            saveCanvasFile(file_dialog.selected_path, pts);
+            saveCanvasFile(file_dialog.selected_path, shapes);
 
         ImGui::End();
 
@@ -509,54 +508,54 @@ int main(int argc, char* argv[])
         ImGui::SetNextWindowSize(ImVec2(2 * SCREEN_WIDTH / 3, 2 * SCREEN_HEIGHT / 3), ImGuiCond_Once);
         style.WindowPadding = ImVec2(0.0f, 0.0f);
 
-        ImGui::Begin("Rendering", nullptr, renderingWindowFlags);
-        if (simulationManager.reset)
+        ImGui::Begin("Rendering", nullptr, rendering_window_flags);
+        if (simulation_manager.reset)
         {
-            simulationManager.clearObjects();
+            simulation_manager.clearObjects();
 
-            for (pts_it = pts.begin(); pts_it != pts.end(); pts_it++)
+            for (shapes_it = shapes.begin(); shapes_it != shapes.end(); shapes_it++)
             {
-                for (int n = 0; n < pts_it->second.Size; n++)
+                for (int n = 0; n < shapes_it->second.Size; n++)
                 {
-                    switch (pts_it->second[n].type)
+                    switch (shapes_it->second[n].type)
                     {
                     case b2_dynamicBody:
-                        if (pts_it->second[n].name == "Box")
-                            createBoxObject(origin, pts_it->second[n]);
-                        else if (pts_it->second[n].name == "Box")
-                            createBoxObject(origin, pts_it->second[n]);
-                        else if (pts_it->second[n].name == "Ball")
-                            createCircleObject(origin, pts_it->second[n]);
+                        if (shapes_it->second[n].name == "Box")
+                            createBoxObject(origin, shapes_it->second[n]);
+                        else if (shapes_it->second[n].name == "Box")
+                            createBoxObject(origin, shapes_it->second[n]);
+                        else if (shapes_it->second[n].name == "Ball")
+                            createCircleObject(origin, shapes_it->second[n]);
                         break;
                     case b2_staticBody:
-                        if (pts_it->second[n].name == "Wall")
-                            createWallObject(origin, pts_it->second[n]);
-                        else if (pts_it->second[n].name == "Wall")
-                            createWallObject(origin, pts_it->second[n]);
-                        else if (pts_it->second[n].name == "Ball")
-                            createCircleObject(origin, pts_it->second[n]);
+                        if (shapes_it->second[n].name == "Wall")
+                            createWallObject(origin, shapes_it->second[n]);
+                        else if (shapes_it->second[n].name == "Wall")
+                            createWallObject(origin, shapes_it->second[n]);
+                        else if (shapes_it->second[n].name == "Ball")
+                            createCircleObject(origin, shapes_it->second[n]);
                         break;
                     }
                 }
             }
-            simulationManager.reset = false;
+            simulation_manager.reset = false;
         }
-        if (simulationManager.play)
+        if (simulation_manager.play)
         {
             ImGui::Image(
-                (ImTextureID)sceneBuffer.getFrameTexture(),
+                (ImTextureID)scene_buffer.getFrameTexture(),
                 ImGui::GetContentRegionAvail(),
                 ImVec2(0, 1),
                 ImVec2(1, 0));
 
             // write to the custom framebuffer
-            sceneBuffer.bind();
-            glClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
+            scene_buffer.bind();
+            glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
             glClear(GL_COLOR_BUFFER_BIT);
 
             // reder all the objects in the scene
             std::map<int, std::vector<Box2DObject>>::iterator it;
-            for (it = simulationManager.m_objects.begin(); it != simulationManager.m_objects.end(); it++)
+            for (it = simulation_manager.m_objects.begin(); it != simulation_manager.m_objects.end(); it++)
             {
                 for (int n = 0; n < it->second.size(); n++)
                 {
@@ -581,25 +580,25 @@ int main(int argc, char* argv[])
                 }
             }
 
-            sceneBuffer.unbind();
+            scene_buffer.unbind();
 
             // perform a step in the simulation
-            if (simulationManager.simulate)
-                simulationManager.m_world->Step(1.0f / 60.0f, 6, 2);
+            if (simulation_manager.simulate)
+                simulation_manager.m_world->Step(1.0f / 60.0f, 6, 2);
         }
         else
         {
             ImGui::Image(
-                (ImTextureID)sceneBuffer.getFrameTexture(),
+                (ImTextureID)scene_buffer.getFrameTexture(),
                 ImGui::GetContentRegionAvail(),
                 ImVec2(0, 1),
                 ImVec2(1, 0));
 
             // write to the custom framebuffer
-            sceneBuffer.bind();
-            glClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
+            scene_buffer.bind();
+            glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
             glClear(GL_COLOR_BUFFER_BIT);
-            sceneBuffer.unbind();
+            scene_buffer.unbind();
         }
         ImGui::End();
 
@@ -619,7 +618,7 @@ int main(int argc, char* argv[])
         }
 
         glfwSwapBuffers(window);
-        limitFPS(&lastTime, TARGET_FPS);
+        limitFPS(&last_time, TARGET_FPS);
     }
     glfwTerminate();
     return 0;
@@ -641,43 +640,43 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     }
 }
 
-void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) 
+void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) 
 {
     if (button == GLFW_MOUSE_BUTTON_LEFT || button == GLFW_MOUSE_BUTTON_RIGHT) 
     {
         if (action == GLFW_PRESS)
-            mouseKeys[button] = true;
+            mouse_keys[button] = true;
         else if (action == GLFW_RELEASE) 
         {
-            mouseKeys[button] = false;
-            mouseKeysProcessed[button] = false;
+            mouse_keys[button] = false;
+            mouse_keys_processed[button] = false;
         }
     }
 }
 
-void limitFPS(double* lastTime, const float targetFPS) 
+void limitFPS(double* last_time, const float targetFPS) 
 {
-    while (glfwGetTime() < *lastTime + 1.0f / targetFPS) { ; }
-    *lastTime += 1.0f / targetFPS;
+    while (glfwGetTime() < *last_time + 1.0f / targetFPS) { ; }
+    *last_time += 1.0f / targetFPS;
 }
 
-void window_size_callback_static(GLFWwindow* window, int width, int height) 
+void windowSizeCallback(GLFWwindow* window, int width, int height) 
 {
     glViewport(0, 0, width, height);
-    sceneBuffer.rescaleFrameBuffer(width, height);
+    scene_buffer.rescaleFrameBuffer(width, height);
 }
 
-void saveCanvasFile(const std::string& filePath, const std::map<int,ImVector<Shape_t>>& pts)
+void saveCanvasFile(const std::string& filePath, const std::map<int,ImVector<Shape_t>>& shapes)
 {
     std::ofstream outfile(filePath, std::ios_base::app);
 
     outfile << "{" << '\n';
 
-    std::map<int, ImVector<Shape_t>>::const_iterator pts_it;
-    for (pts_it = pts.begin(); pts_it !=pts.end(); pts_it++)
+    std::map<int, ImVector<Shape_t>>::const_iterator shapes_it;
+    for (shapes_it = shapes.begin(); shapes_it !=shapes.end(); shapes_it++)
     {
-        outfile << "\t[" << pts_it->first << "]:\n\t{\n";
-        for (auto& shape : pts_it->second)
+        outfile << "\t[" << shapes_it->first << "]:\n\t{\n";
+        for (auto& shape : shapes_it->second)
         {
             outfile << "\t\t";
             outfile << shape.name << "," << "(" << shape.p1.x << ", " << shape.p1.y << "), " << "(" << shape.p2.x << ", " << shape.p2.y << "), "
@@ -689,9 +688,9 @@ void saveCanvasFile(const std::string& filePath, const std::map<int,ImVector<Sha
     outfile << "}";
 }
 
-void loadCanvasFile(const std::string& filePath, std::map<int, ImVector<Shape_t>>* pts)
+void loadCanvasFile(const std::string& filePath, std::map<int, ImVector<Shape_t>>* shapes)
 {
-    (*pts).clear();
+    (*shapes).clear();
     std::ifstream infile(filePath, std::ios_base::in);
     std::string buffer;
 
@@ -731,7 +730,7 @@ void loadCanvasFile(const std::string& filePath, std::map<int, ImVector<Shape_t>
                     shape.type = (b2BodyType)values[8];
                     shape.area = values[9];
                     shape.rotation = values[10];
-                    (*pts)[element_number].push_back(shape);
+                    (*shapes)[element_number].push_back(shape);
                 }
             }
         }
@@ -741,22 +740,22 @@ void loadCanvasFile(const std::string& filePath, std::map<int, ImVector<Shape_t>
 void createBoxObject(const ImVec2 origin, const Shape_t& shape)
 {
     Box box;
-    box.init(simulationManager.m_world, shape.name ,glm::vec2((shape.p1.x + shape.p2.x) / 2 / RENDER_SCALE, (shape.p1.y + shape.p2.y) / 2 / RENDER_SCALE), glm::vec2(abs(shape.p1.x - shape.p2.x) / RENDER_SCALE, abs(shape.p1.y - shape.p2.y) / RENDER_SCALE), b2_dynamicBody, -shape.rotation);
-    simulationManager.m_objects[1].push_back(box);
+    box.init(simulation_manager.m_world, shape.name ,glm::vec2((shape.p1.x + shape.p2.x) / 2 / RENDER_SCALE, (shape.p1.y + shape.p2.y) / 2 / RENDER_SCALE), glm::vec2(abs(shape.p1.x - shape.p2.x) / RENDER_SCALE, abs(shape.p1.y - shape.p2.y) / RENDER_SCALE), b2_dynamicBody, -shape.rotation);
+    simulation_manager.m_objects[1].push_back(box);
 }
 
 void createWallObject(const ImVec2 origin, const Shape_t& shape)
 {
     Wall wall;
-    wall.init(simulationManager.m_world, shape.name, glm::vec2((shape.p1.x + shape.p2.x) / 2 / RENDER_SCALE, (shape.p1.y + shape.p2.y) / 2 / RENDER_SCALE), glm::vec2(abs(shape.p1.x - shape.p2.x) / RENDER_SCALE, abs(shape.p1.y - shape.p2.y) / RENDER_SCALE), b2_staticBody, -shape.rotation);
-    simulationManager.m_objects[1].push_back(wall);
+    wall.init(simulation_manager.m_world, shape.name, glm::vec2((shape.p1.x + shape.p2.x) / 2 / RENDER_SCALE, (shape.p1.y + shape.p2.y) / 2 / RENDER_SCALE), glm::vec2(abs(shape.p1.x - shape.p2.x) / RENDER_SCALE, abs(shape.p1.y - shape.p2.y) / RENDER_SCALE), b2_staticBody, -shape.rotation);
+    simulation_manager.m_objects[1].push_back(wall);
 }
 
 void createCircleObject(const ImVec2 origin, const Shape_t& shape)
 {
     Circle circle;
-    circle.init(simulationManager.m_world, shape.name, glm::vec2(shape.p1.x / RENDER_SCALE, shape.p1.y / RENDER_SCALE), sqrt(pow(shape.p1.x - shape.p2.x, 2) + pow(shape.p1.y - shape.p2.y, 2)) / RENDER_SCALE, shape.type);
-    simulationManager.m_objects[2].push_back(circle);
+    circle.init(simulation_manager.m_world, shape.name, glm::vec2(shape.p1.x / RENDER_SCALE, shape.p1.y / RENDER_SCALE), sqrt(pow(shape.p1.x - shape.p2.x, 2) + pow(shape.p1.y - shape.p2.y, 2)) / RENDER_SCALE, shape.type);
+    simulation_manager.m_objects[2].push_back(circle);
 }
 
 bool checkPointsOverlapping(ImVec2 p1, ImVec2 p2)

@@ -17,7 +17,7 @@ public:
 	bool simulate = true;
 
 	b2World* m_world;
-	bool gravityOn;
+	bool gravity_on;
 
 	std::map<int, std::vector<Box2DObject>> m_objects;
 
@@ -38,6 +38,6 @@ private:
 	float RENDER_SCALE;
 	unsigned int SCREEN_WIDTH;
 	unsigned int SCREEN_HEIGHT;
-	std::mt19937 randGenerator;
+	std::mt19937 rand_generator;
 };
 

@@ -12,8 +12,8 @@
 std::map<std::string, Shader> ResourceManager::shaders;
 std::map<std::string, Texture2D> ResourceManager::textures;
 
-Shader ResourceManager::loadShader(const char* vShaderFile, const char* fShaderFile, const char* gShaderFile, std::string name) {
-	shaders[name] = loadShaderFromFile(vShaderFile, fShaderFile, gShaderFile);
+Shader ResourceManager::loadShader(const char* v_shader_file, const char* f_shader_file, const char* g_shader_file, std::string name) {
+	shaders[name] = loadShaderFromFile(v_shader_file, f_shader_file, g_shader_file);
 	return shaders[name];
 }
 
@@ -39,43 +39,43 @@ void ResourceManager::clear() {
 		glDeleteProgram(iter.second.ID);
 }
 
-Shader ResourceManager::loadShaderFromFile(const char* vShaderFile, const char* fShaderFile, const char* gShaderFile) {
+Shader ResourceManager::loadShaderFromFile(const char* v_shader_file, const char* f_shader_file, const char* g_shader_file) {
 	// 1. retrieve the vertex/fragment source code from filePath
-	std::string vertexCode;
-	std::string fragmentCode;
-	std::string geometryCode;
+	std::string vertex_code;
+	std::string fragment_code;
+	std::string geometry_code;
 	try {
 		// open files
-		std::ifstream vertexShaderFile(vShaderFile);
-		std::ifstream fragmentShaderFile(fShaderFile);
-		std::stringstream vShaderStream, fShaderStream;
+		std::ifstream vertex_shader_file(v_shader_file);
+		std::ifstream fragment_shader_file(f_shader_file);
+		std::stringstream v_shader_stream, f_shader_stream;
 		// read file's buffer contents into streams
-		vShaderStream << vertexShaderFile.rdbuf();
-		fShaderStream << fragmentShaderFile.rdbuf();
+		v_shader_stream << vertex_shader_file.rdbuf();
+		f_shader_stream << fragment_shader_file.rdbuf();
 		// close file handlers
-		vertexShaderFile.close();
-		fragmentShaderFile.close();
+		vertex_shader_file.close();
+		fragment_shader_file.close();
 		// convert stream into string
-		vertexCode = vShaderStream.str();
-		fragmentCode = fShaderStream.str();
+		vertex_code = v_shader_stream.str();
+		fragment_code = f_shader_stream.str();
 		// if geometry shader path is present, also load geometry shader
-		if (gShaderFile != nullptr) {
-			std::ifstream geometryShaderFile(gShaderFile);
-			std::stringstream gShaderStream;
-			gShaderStream << geometryShaderFile.rdbuf();
-			geometryShaderFile.close();
-			geometryCode = gShaderStream.str();
+		if (g_shader_file != nullptr) {
+			std::ifstream geometry_shader_file(g_shader_file);
+			std::stringstream g_shader_stream;
+			g_shader_stream << geometry_shader_file.rdbuf();
+			geometry_shader_file.close();
+			geometry_code = g_shader_stream.str();
 		}
 	}
 	catch (std::exception e) {
 		std::cout << "ERROR:SHADER: Failed to read shader files" << std::endl;
 	}
-	const char* vShaderCode = vertexCode.c_str();
-	const char* fShaderCode = fragmentCode.c_str();
-	const char* gShaderCode = geometryCode.c_str();
+	const char* v_shader_code = vertex_code.c_str();
+	const char* f_shader_code = fragment_code.c_str();
+	const char* g_shader_code = geometry_code.c_str();
 	// 2. now create shader object from source code
 	Shader shader;
-	shader.compile(vShaderCode, fShaderCode, gShaderFile != nullptr ? gShaderCode : nullptr);
+	shader.compile(v_shader_code, f_shader_code, g_shader_file != nullptr ? g_shader_code : nullptr);
 	return shader;
 }
 
@@ -87,8 +87,8 @@ Texture2D ResourceManager::loadTextureFromFile(const char* file, bool alpha) {
 		texture.image_format = GL_RGBA;
 	}
 	// load image
-	int width, height, nrChannels;
-	unsigned char* data = stbi_load(file, &width, &height, &nrChannels, 0);
+	int width, height, nr_channels;
+	unsigned char* data = stbi_load(file, &width, &height, &nr_channels, 0);
 	// generate texture
 	texture.generate(width, height, data);
 	// free image data
