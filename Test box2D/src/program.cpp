@@ -26,9 +26,8 @@
 #define PI atan(1) * 4
 // structure for holding shape data for drawing
 // p1: top-left corner, p2: bottom-right corner, color: shape color
-namespace MyShape
-{
-    struct Shape {
+
+  typedef struct Shape {
         std::string name;
         ImVec2 p1;
         ImVec2 p2;
@@ -36,8 +35,8 @@ namespace MyShape
         b2BodyType type;
         float area; 
         float rotation;
-    };
-}
+    } Shape_t ;
+
 // callback for registering the pressed keys
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
 // callback for resizing the viewport when the window is resized
@@ -47,21 +46,21 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 // limits the FPS to a given amount
 void limitFPS(double* lastTime, float targetFPS);
 // save a canva sketch to file
-void saveCanvasFile(const std::string& filePath, const std::map<int, ImVector<MyShape::Shape>>& pts);
+void saveCanvasFile(const std::string& filePath, const std::map<int, ImVector<Shape_t>>& pts);
 // loads a canva sketch form file
-void loadCanvasFile(const std::string& filePath, std::map<int, ImVector<MyShape::Shape>>* pts);
+void loadCanvasFile(const std::string& filePath, std::map<int, ImVector<Shape_t>>* pts);
 // creates a box Box2D object from a canva sketch
-void createBoxObject(const ImVec2 origin, const MyShape::Shape& shape);
+void createBoxObject(const ImVec2 origin, const Shape_t& shape);
 // creates a static Box2D object 
-void createWallObject(const ImVec2 origin, const MyShape::Shape& shape);
+void createWallObject(const ImVec2 origin, const Shape_t& shape);
 // creates a circle Box2D object
-void createCircleObject(const ImVec2 origin, const MyShape::Shape& shape);
+void createCircleObject(const ImVec2 origin, const Shape_t& shape);
 // checks if two points in the canva are overlapping. Returns true if they overlap
 bool checkPointsOverlapping(ImVec2 p1, ImVec2 p2);
 // checks if a point is inside a given rectangluar area
-bool isPointInGivenArea(MyShape::Shape area, ImVec2 point);
+bool isPointInGivenArea(Shape_t area, ImVec2 point);
 // draw a rotated shae in the canva
-void drawRotatedQuad(ImDrawList* draw_list, ImVec2 origin, MyShape::Shape shape);
+void drawRotatedQuad(ImDrawList* draw_list, ImVec2 origin, Shape_t shape);
 
 
 
@@ -171,23 +170,6 @@ int main(int argc, char* argv[])
     // file dialog initializaxtino for saving and opening files
     imgui_addons::ImGuiFileBrowser file_dialog;
 
-    // map connecting wall position and dimensions ---> map<position, dimension>
-    /*std::map<std::vector<float>, std::vector<float>> wallsData =
-    {
-        {{(float)SCREEN_WIDTH / RENDER_SCALE / 2.0f, (float)SCREEN_HEIGHT / RENDER_SCALE + 10.0f} , {(float)SCREEN_WIDTH / RENDER_SCALE , 20.0f}},  // bottom
-        {{(float)SCREEN_WIDTH / RENDER_SCALE / 2.0f, -10.0f}                                      , {(float)SCREEN_WIDTH / RENDER_SCALE , 20.0f}},  // top
-        {{-10.0f, (float)SCREEN_HEIGHT / RENDER_SCALE / 2.0f}                                     , {20.0f, (float)SCREEN_HEIGHT / RENDER_SCALE}}, // left
-        {{(float)SCREEN_WIDTH / RENDER_SCALE + 10.0f, (float)SCREEN_HEIGHT / RENDER_SCALE / 2.0f}  , {20.0f, (float)SCREEN_HEIGHT / RENDER_SCALE }}, // right
-    };
-    std::vector<Wall> walls;
-    std::map< std::vector<float>, std::vector<float>>::iterator pts_it;
-    for (pts_it = wallsData.begin(); pts_it !=wallsData.end(); pts_it++) 
-    {
-        Wall wall;
-        wall.init(simulationManager.m_world, glm::vec2(pts_it->first[0], pts_it->first[1]), glm::vec2(pts_it->second[0], pts_it->second[1]));
-        walls.push_back(wall);
-    }*/
-
     // buffer initialization for rendering the simulation
     sceneBuffer.init(SCREEN_WIDTH, SCREEN_HEIGHT);
 
@@ -216,8 +198,6 @@ int main(int argc, char* argv[])
         {
             simulationManager.play = true;
             simulationManager.simulate = true;
-            //simulationManager.reset = false;
-            //populate = true;
         }
         ImGui::SameLine();
         if (ImGui::Button("Stop"))
@@ -229,14 +209,12 @@ int main(int argc, char* argv[])
         {
             simulationManager.reset = true;
             simulationManager.play = false;
-            //simulationManager.populate = true;
         }
         ImGui::SameLine(ImGui::GetWindowWidth() - 130.0f);
         if (ImGui::Checkbox("Enable gravity", &simulationManager.gravityOn))
             simulationManager.enableGravity();
 
         ImGui::ColorEdit3("background color", (float*)&clearColor);
-        ImGui::InputInt("Number of boxes", &simulationManager.boxNumber);
 
         ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
         ImGui::End();
@@ -245,9 +223,9 @@ int main(int argc, char* argv[])
         ImGui::Begin("Canva", nullptr, canvaWindowFlags);
 
         // Canvas variables initialization
-        static std::map<int, ImVector<MyShape::Shape>> pts;
-        std::map<int, ImVector<MyShape::Shape>>::iterator pts_it;
-        static MyShape::Shape selectionShape;
+        static std::map<int, ImVector<Shape_t>> pts;
+        std::map<int, ImVector<Shape_t>>::iterator pts_it;
+        static Shape_t selectionShape;
         static ImVec2 scrolling(0.0f, 0.0f);
         static bool opt_enable_grid = true;
         static bool opt_enable_context_menu = true;
@@ -319,7 +297,7 @@ int main(int argc, char* argv[])
             }
             else
             {
-                MyShape::Shape shape;
+                Shape_t shape;
                 shape.p1 = mouse_pos_in_canva;
                 shape.p2 = mouse_pos_in_canva;
                 shape.color = shapeColor;
@@ -561,23 +539,10 @@ int main(int argc, char* argv[])
                     }
                 }
             }
-           /* regenerates the boxes
-           for (int i = 0; i < num_boxes; i++)
-           {
-               Box newBox;
-               newBox.init(m_world, glm::vec2(xPos(randGenerator), yPos(randGenerator)), glm::vec2(size(randGenerator), size(randGenerator)));
-               newBox.setRotation(glm::radians(rotation(randGenerator)));
-               newBox.setColor(glm::vec3(r(randGenerator), g(randGenerator), b(randGenerator)));
-               m_boxes.push_back(newBox);
-           }*/
+            simulationManager.reset = false;
         }
         if (simulationManager.play)
         {
-            if (simulationManager.populate)
-            {
-                simulationManager.generateRandomBox(simulationManager.boxNumber);
-                simulationManager.populate = false;
-            }
             ImGui::Image(
                 (ImTextureID)sceneBuffer.getFrameTexture(),
                 ImGui::GetContentRegionAvail(),
@@ -589,43 +554,6 @@ int main(int argc, char* argv[])
             glClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
             glClear(GL_COLOR_BUFFER_BIT);
 
-            if (simulationManager.reset)
-            {
-                simulationManager.reset = false;
-                /*
-                std::map< std::vector<float>, std::vector<float>>::iterator pts_it1;
-                for (it1 = wallsData.begin(); it1 != wallsData.end(); it1++)
-                {
-                    Wall wall;
-                    wall.init(simulationManager.m_world, glm::vec2(it1->first[0], it1->first[1]), glm::vec2(it1->second[0], it1->second[1]));
-                    walls.push_back(wall);
-                }*/
-               /* for (pts_it = pts.begin(); pts_it != pts.end(); pts_it++)
-                {
-                    for (int n = 0; n < pts_it->second.Size; n++)
-                    {
-                        switch (pts_it->second[n].type)
-                        {
-                        case b2_dynamicBody:
-                            if (pts_it->second[n].name == "Box")
-                                createBoxObject(origin, pts_it->second[n]);
-                            else if (pts_it->second[n].name == "Box")
-                                createBoxObject(origin, pts_it->second[n]);
-                            else if (pts_it->second[n].name == "Ball")
-                                createCircleObject(origin, pts_it->second[n]);
-                            break;
-                        case b2_staticBody:
-                            if (pts_it->second[n].name == "Wall")
-                                createWallObject(origin, pts_it->second[n]);
-                            else if (pts_it->second[n].name == "Wall")
-                                createWallObject(origin, pts_it->second[n]);
-                            else if (pts_it->second[n].name == "Ball")
-                                createCircleObject(origin, pts_it->second[n]);
-                            break;
-                        }
-                    }
-                }*/
-            }
             // reder all the objects in the scene
             std::map<int, std::vector<Box2DObject>>::iterator it;
             for (it = simulationManager.m_objects.begin(); it != simulationManager.m_objects.end(); it++)
@@ -739,13 +667,13 @@ void window_size_callback_static(GLFWwindow* window, int width, int height)
     sceneBuffer.rescaleFrameBuffer(width, height);
 }
 
-void saveCanvasFile(const std::string& filePath, const std::map<int,ImVector<MyShape::Shape>>& pts)
+void saveCanvasFile(const std::string& filePath, const std::map<int,ImVector<Shape_t>>& pts)
 {
     std::ofstream outfile(filePath, std::ios_base::app);
 
     outfile << "{" << '\n';
 
-    std::map<int, ImVector<MyShape::Shape>>::const_iterator pts_it;
+    std::map<int, ImVector<Shape_t>>::const_iterator pts_it;
     for (pts_it = pts.begin(); pts_it !=pts.end(); pts_it++)
     {
         outfile << "\t[" << pts_it->first << "]:\n\t{\n";
@@ -761,7 +689,7 @@ void saveCanvasFile(const std::string& filePath, const std::map<int,ImVector<MyS
     outfile << "}";
 }
 
-void loadCanvasFile(const std::string& filePath, std::map<int, ImVector<MyShape::Shape>>* pts)
+void loadCanvasFile(const std::string& filePath, std::map<int, ImVector<Shape_t>>* pts)
 {
     (*pts).clear();
     std::ifstream infile(filePath, std::ios_base::in);
@@ -785,7 +713,7 @@ void loadCanvasFile(const std::string& filePath, std::map<int, ImVector<MyShape:
                     bool proc_string = false;
                     for (auto& el : buffer)
                     {
-                        if (std::isdigit(el) || el == '.') // retireves numbers
+                        if (std::isdigit(el) || el == '.') // retrieves numbers
                             b += el;
                         else if (!std::isdigit(el) && !b.empty()) // saves the number
                         {
@@ -795,7 +723,7 @@ void loadCanvasFile(const std::string& filePath, std::map<int, ImVector<MyShape:
                         else if (std::isalpha(el)) // retrieves object's name
                             name += el;
                     }
-                    MyShape::Shape shape;
+                    Shape_t shape;
                     shape.name = name;
                     shape.p1 = ImVec2(values[0], values[1]);
                     shape.p2 = ImVec2(values[2], values[3]);
@@ -810,21 +738,21 @@ void loadCanvasFile(const std::string& filePath, std::map<int, ImVector<MyShape:
     }
 }
 
-void createBoxObject(const ImVec2 origin, const MyShape::Shape& shape)
+void createBoxObject(const ImVec2 origin, const Shape_t& shape)
 {
     Box box;
-    box.init(simulationManager.m_world, shape.name ,glm::vec2((shape.p1.x + shape.p2.x) / 2 / RENDER_SCALE, (shape.p1.y + shape.p2.y) / 2 / RENDER_SCALE), glm::vec2(abs(shape.p1.x - shape.p2.x) / RENDER_SCALE, abs(shape.p1.y - shape.p2.y) / RENDER_SCALE), b2_dynamicBody, shape.rotation);
+    box.init(simulationManager.m_world, shape.name ,glm::vec2((shape.p1.x + shape.p2.x) / 2 / RENDER_SCALE, (shape.p1.y + shape.p2.y) / 2 / RENDER_SCALE), glm::vec2(abs(shape.p1.x - shape.p2.x) / RENDER_SCALE, abs(shape.p1.y - shape.p2.y) / RENDER_SCALE), b2_dynamicBody, -shape.rotation);
     simulationManager.m_objects[1].push_back(box);
 }
 
-void createWallObject(const ImVec2 origin, const MyShape::Shape& shape)
+void createWallObject(const ImVec2 origin, const Shape_t& shape)
 {
     Wall wall;
-    wall.init(simulationManager.m_world, shape.name, glm::vec2((shape.p1.x + shape.p2.x) / 2 / RENDER_SCALE, (shape.p1.y + shape.p2.y) / 2 / RENDER_SCALE), glm::vec2(abs(shape.p1.x - shape.p2.x) / RENDER_SCALE, abs(shape.p1.y - shape.p2.y) / RENDER_SCALE), b2_staticBody, shape.rotation);
+    wall.init(simulationManager.m_world, shape.name, glm::vec2((shape.p1.x + shape.p2.x) / 2 / RENDER_SCALE, (shape.p1.y + shape.p2.y) / 2 / RENDER_SCALE), glm::vec2(abs(shape.p1.x - shape.p2.x) / RENDER_SCALE, abs(shape.p1.y - shape.p2.y) / RENDER_SCALE), b2_staticBody, -shape.rotation);
     simulationManager.m_objects[1].push_back(wall);
 }
 
-void createCircleObject(const ImVec2 origin, const MyShape::Shape& shape)
+void createCircleObject(const ImVec2 origin, const Shape_t& shape)
 {
     Circle circle;
     circle.init(simulationManager.m_world, shape.name, glm::vec2(shape.p1.x / RENDER_SCALE, shape.p1.y / RENDER_SCALE), sqrt(pow(shape.p1.x - shape.p2.x, 2) + pow(shape.p1.y - shape.p2.y, 2)) / RENDER_SCALE, shape.type);
@@ -836,7 +764,7 @@ bool checkPointsOverlapping(ImVec2 p1, ImVec2 p2)
     return !(p1.x - p2.x && p1.y - p2.y);
 }
 
-bool isPointInGivenArea(MyShape::Shape area, ImVec2 point)
+bool isPointInGivenArea(Shape_t area, ImVec2 point)
 {
     // reference to https://math.stackexchange.com/questions/190111/how-to-check-if-a-point-is-inside-a-rectangle
     glm::vec2 pt(point.x, point.y);
@@ -846,7 +774,7 @@ bool isPointInGivenArea(MyShape::Shape area, ImVec2 point)
     return 0 < glm::dot(AM, AB) && glm::dot(AM, AB) < glm::dot(AB, AB) && 0 < glm::dot(AM, AD) && glm::dot(AM, AD) < glm::dot(AD, AD);
 }
 
-void drawRotatedQuad(ImDrawList* draw_list, ImVec2 origin, MyShape::Shape shape)
+void drawRotatedQuad(ImDrawList* draw_list, ImVec2 origin, Shape_t shape)
 {
     ImVec2 center((shape.p1.x + shape.p2.x) / 2.0f, (shape.p1.y + shape.p2.y) / 2.0f);
     ImVec2 p1 = ImRotate(ImVec2(shape.p1.x - center.x, shape.p1.y - center.y), cos(glm::radians(-shape.rotation)), sin(glm::radians(-shape.rotation)));

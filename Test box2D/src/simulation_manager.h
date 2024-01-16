@@ -14,7 +14,6 @@ public:
 
 	bool play = false;
 	bool reset = false;
-	bool populate = false;
 	bool simulate = true;
 
 	b2World* m_world;
@@ -29,8 +28,6 @@ public:
 
 	SimulationManager(const float RENDER_SCALE, const unsigned int SCREEN_WIDTH, const unsigned int SCREEN_HEIGHT);
 	~SimulationManager();
-	void generateRandomBox(const int boxNumber);
-	void renderBoxes();
 	void setGravity(const b2Vec2 gravity);
 	void enableGravity();
 	void clearLastObject();
@@ -42,7 +39,5 @@ private:
 	unsigned int SCREEN_WIDTH;
 	unsigned int SCREEN_HEIGHT;
 	std::mt19937 randGenerator;
-
-	void initRandomGeneration();
 };
 

@@ -8,11 +8,11 @@ class Box2DObject
 public:
 	Box2DObject() {};
 	~Box2DObject() {};
-	b2Body* getBody() { return body; }
-	b2Fixture* getFixture() { return fixture; }
-	glm::vec2& getDimensions() { return m_dimensions; }
-	glm::vec3& getColor() { return color; }
-	std::string& getName() { return m_name; }
+	b2Body* getBody() const { return body; }
+	b2Fixture* getFixture() const { return fixture; }
+	glm::vec2 getDimensions() const { return m_dimensions; }
+	glm::vec3 getColor() const { return color; }
+	std::string getName() const { return m_name; }
 	void setRotation(float angle) { body->SetTransform(body->GetPosition(), angle); }
 	void setColor(glm::vec3 color) { this->color = color; }
 	void setName(const std::string& name) { m_name = name; }
@@ -64,7 +64,7 @@ public:
 		body->CreateFixture(&shape, 0.0f);
 		setColor(color);
 		setName(name);
-		setRotation(rotation);
+		setRotation(glm::radians(rotation));
 
 	}
 };
@@ -72,7 +72,7 @@ public:
 class Circle : public Box2DObject
 {
 public:
-	void init(b2World* world, const std::string& name, const glm::vec2& position, const float radius, const b2BodyType& type,const  const glm::vec3& color = glm::vec3(1.0f))
+	void init(b2World* world, const std::string& name, const glm::vec2& position, const float radius, const b2BodyType& type,const glm::vec3& color = glm::vec3(1.0f))
 	{
 		b2BodyDef bodyDef;
 		bodyDef.type = type;
@@ -94,7 +94,7 @@ public:
 		setName(name);
 	}
 
-	float getRadius() { return m_radius; }
+	float getRadius() const { return m_radius; }
 private:
 	float m_radius;
 };
