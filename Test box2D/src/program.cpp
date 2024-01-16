@@ -60,6 +60,9 @@ void createCircleObject(const ImVec2 origin, const MyShape::Shape& shape);
 bool checkPointsOverlapping(ImVec2 p1, ImVec2 p2);
 // checks if a point is inside a given rectangluar area
 bool isPointInGivenArea(MyShape::Shape area, ImVec2 point);
+// draw a rotated shae in the canva
+void drawRotatedQuad(ImDrawList* draw_list, ImVec2 origin, MyShape::Shape shape);
+
 
 
 // screen dimentions
@@ -456,16 +459,10 @@ int main(int argc, char* argv[])
                     draw_list->AddLine(ImVec2(origin.x + pts[0][n].p1.x, origin.y + pts[0][n].p1.y), ImVec2(origin.x + pts[0][n].p2.x, origin.y + pts[0][n].p2.y), ImGui::ColorConvertFloat4ToU32(pts[0][n].color), 2.0f);
                     break;
                 case 1:
-                    if (rotateShape && isPointInGivenArea(selectionShape, pts_it->second[n].p1) && isPointInGivenArea(selectionShape, pts_it->second[n].p2))
+                    if (selectShape && isPointInGivenArea(selectionShape, pts_it->second[n].p1) && isPointInGivenArea(selectionShape, pts_it->second[n].p2))
                     {
                         pts[1][n].rotation = rotateAmount;
-                        ImVec2 center((pts[1][n].p1.x + pts[1][n].p2.x) / 2.0f, (pts[1][n].p1.y + pts[1][n].p2.y) / 2.0f);
-                        ImVec2 p1 = ImRotate(ImVec2(pts[1][n].p1.x - center.x, pts[1][n].p1.y - center.y), cos(glm::radians(-rotateAmount)), sin(glm::radians(-rotateAmount)));
-                        ImVec2 p2 = ImRotate(ImVec2(pts[1][n].p1.x - center.x, pts[1][n].p2.y - center.y), cos(glm::radians(-rotateAmount)), sin(glm::radians(-rotateAmount)));
-                        ImVec2 p3 = ImRotate(ImVec2(pts[1][n].p2.x - center.x, pts[1][n].p2.y - center.y), cos(glm::radians(-rotateAmount)), sin(glm::radians(-rotateAmount)));
-                        ImVec2 p4 = ImRotate(ImVec2(pts[1][n].p2.x - center.x, pts[1][n].p1.y - center.y), cos(glm::radians(-rotateAmount)), sin(glm::radians(-rotateAmount)));
-                        draw_list->AddQuad(ImVec2(origin.x + p1.x + center.x, origin.y + p1.y + center.y), ImVec2(origin.x + p2.x + center.x, origin.y + p2.y + center.y), ImVec2(origin.x + p3.x + center.x, origin.y + p3.y + center.y), ImVec2(origin.x + p4.x + center.x, origin.y + p4.y + center.y), ImGui::ColorConvertFloat4ToU32(pts[1][n].color));
-                        
+
                         // adjust rotation with mousewheel
                         if (io.MouseWheel == 1.0)
                             rotateAmount += 2.5f;
@@ -475,16 +472,7 @@ int main(int argc, char* argv[])
                         // save rotation to simulation
                         simulationManager.m_objects[1][n].setRotation(glm::radians(-rotateAmount));
                     }
-                    else
-                    {
-                        ImVec2 center((pts[1][n].p1.x + pts[1][n].p2.x) / 2.0f, (pts[1][n].p1.y + pts[1][n].p2.y) / 2.0f);
-                        ImVec2 p1 = ImRotate(ImVec2(pts[1][n].p1.x - center.x, pts[1][n].p1.y - center.y), cos(glm::radians(-pts[1][n].rotation)), sin(glm::radians(-pts[1][n].rotation)));
-                        ImVec2 p2 = ImRotate(ImVec2(pts[1][n].p1.x - center.x, pts[1][n].p2.y - center.y), cos(glm::radians(-pts[1][n].rotation)), sin(glm::radians(-pts[1][n].rotation)));
-                        ImVec2 p3 = ImRotate(ImVec2(pts[1][n].p2.x - center.x, pts[1][n].p2.y - center.y), cos(glm::radians(-pts[1][n].rotation)), sin(glm::radians(-pts[1][n].rotation)));
-                        ImVec2 p4 = ImRotate(ImVec2(pts[1][n].p2.x - center.x, pts[1][n].p1.y - center.y), cos(glm::radians(-pts[1][n].rotation)), sin(glm::radians(-pts[1][n].rotation)));
-                        draw_list->AddQuad(ImVec2(origin.x + p1.x + center.x, origin.y + p1.y + center.y), ImVec2(origin.x + p2.x + center.x, origin.y + p2.y + center.y), ImVec2(origin.x + p3.x + center.x, origin.y + p3.y + center.y), ImVec2(origin.x + p4.x + center.x, origin.y + p4.y + center.y), ImGui::ColorConvertFloat4ToU32(pts[1][n].color));
-                    }
-                        //draw_list->AddRect(ImVec2(origin.x + pts[1][n].p1.x, origin.y + pts[1][n].p1.y), ImVec2(origin.x + pts[1][n].p2.x, origin.y + pts[1][n].p2.y), ImGui::ColorConvertFloat4ToU32(pts[1][n].color));
+                    drawRotatedQuad(draw_list, origin, pts[1][n]);
                     break;
                 case 2:
                     draw_list->AddCircle(ImVec2(origin.x + pts[2][n].p1.x, origin.y + pts[2][n].p1.y), sqrt(pow(pts[2][n].p1.x - pts[2][n].p2.x, 2) + pow(pts[2][n].p1.y - pts[2][n].p2.y, 2)), ImGui::ColorConvertFloat4ToU32(pts[2][n].color));
@@ -547,6 +535,32 @@ int main(int argc, char* argv[])
         if (simulationManager.reset)
         {
             simulationManager.clearObjects();
+
+            for (pts_it = pts.begin(); pts_it != pts.end(); pts_it++)
+            {
+                for (int n = 0; n < pts_it->second.Size; n++)
+                {
+                    switch (pts_it->second[n].type)
+                    {
+                    case b2_dynamicBody:
+                        if (pts_it->second[n].name == "Box")
+                            createBoxObject(origin, pts_it->second[n]);
+                        else if (pts_it->second[n].name == "Box")
+                            createBoxObject(origin, pts_it->second[n]);
+                        else if (pts_it->second[n].name == "Ball")
+                            createCircleObject(origin, pts_it->second[n]);
+                        break;
+                    case b2_staticBody:
+                        if (pts_it->second[n].name == "Wall")
+                            createWallObject(origin, pts_it->second[n]);
+                        else if (pts_it->second[n].name == "Wall")
+                            createWallObject(origin, pts_it->second[n]);
+                        else if (pts_it->second[n].name == "Ball")
+                            createCircleObject(origin, pts_it->second[n]);
+                        break;
+                    }
+                }
+            }
            /* regenerates the boxes
            for (int i = 0; i < num_boxes; i++)
            {
@@ -586,7 +600,7 @@ int main(int argc, char* argv[])
                     wall.init(simulationManager.m_world, glm::vec2(it1->first[0], it1->first[1]), glm::vec2(it1->second[0], it1->second[1]));
                     walls.push_back(wall);
                 }*/
-                for (pts_it = pts.begin(); pts_it !=pts.end(); pts_it++)
+               /* for (pts_it = pts.begin(); pts_it != pts.end(); pts_it++)
                 {
                     for (int n = 0; n < pts_it->second.Size; n++)
                     {
@@ -610,7 +624,7 @@ int main(int argc, char* argv[])
                             break;
                         }
                     }
-                }
+                }*/
             }
             // reder all the objects in the scene
             std::map<int, std::vector<Box2DObject>>::iterator it;
@@ -799,14 +813,14 @@ void loadCanvasFile(const std::string& filePath, std::map<int, ImVector<MyShape:
 void createBoxObject(const ImVec2 origin, const MyShape::Shape& shape)
 {
     Box box;
-    box.init(simulationManager.m_world, shape.name ,glm::vec2((shape.p1.x + shape.p2.x) / 2 / RENDER_SCALE, (shape.p1.y + shape.p2.y) / 2 / RENDER_SCALE), glm::vec2(abs(shape.p1.x - shape.p2.x) / RENDER_SCALE, abs(shape.p1.y - shape.p2.y) / RENDER_SCALE), b2_dynamicBody);
+    box.init(simulationManager.m_world, shape.name ,glm::vec2((shape.p1.x + shape.p2.x) / 2 / RENDER_SCALE, (shape.p1.y + shape.p2.y) / 2 / RENDER_SCALE), glm::vec2(abs(shape.p1.x - shape.p2.x) / RENDER_SCALE, abs(shape.p1.y - shape.p2.y) / RENDER_SCALE), b2_dynamicBody, shape.rotation);
     simulationManager.m_objects[1].push_back(box);
 }
 
 void createWallObject(const ImVec2 origin, const MyShape::Shape& shape)
 {
     Wall wall;
-    wall.init(simulationManager.m_world, shape.name, glm::vec2((shape.p1.x + shape.p2.x) / 2 / RENDER_SCALE, (shape.p1.y + shape.p2.y) / 2 / RENDER_SCALE), glm::vec2(abs(shape.p1.x - shape.p2.x) / RENDER_SCALE, abs(shape.p1.y - shape.p2.y) / RENDER_SCALE), b2_staticBody);
+    wall.init(simulationManager.m_world, shape.name, glm::vec2((shape.p1.x + shape.p2.x) / 2 / RENDER_SCALE, (shape.p1.y + shape.p2.y) / 2 / RENDER_SCALE), glm::vec2(abs(shape.p1.x - shape.p2.x) / RENDER_SCALE, abs(shape.p1.y - shape.p2.y) / RENDER_SCALE), b2_staticBody, shape.rotation);
     simulationManager.m_objects[1].push_back(wall);
 }
 
@@ -830,4 +844,14 @@ bool isPointInGivenArea(MyShape::Shape area, ImVec2 point)
     glm::vec2 AB(glm::vec2(area.p2.x, area.p1.y) - glm::vec2(area.p1.x, area.p1.y));
     glm::vec2 AD(glm::vec2(area.p1.x, area.p2.y) - glm::vec2(area.p1.x, area.p1.y));
     return 0 < glm::dot(AM, AB) && glm::dot(AM, AB) < glm::dot(AB, AB) && 0 < glm::dot(AM, AD) && glm::dot(AM, AD) < glm::dot(AD, AD);
+}
+
+void drawRotatedQuad(ImDrawList* draw_list, ImVec2 origin, MyShape::Shape shape)
+{
+    ImVec2 center((shape.p1.x + shape.p2.x) / 2.0f, (shape.p1.y + shape.p2.y) / 2.0f);
+    ImVec2 p1 = ImRotate(ImVec2(shape.p1.x - center.x, shape.p1.y - center.y), cos(glm::radians(-shape.rotation)), sin(glm::radians(-shape.rotation)));
+    ImVec2 p2 = ImRotate(ImVec2(shape.p1.x - center.x, shape.p2.y - center.y), cos(glm::radians(-shape.rotation)), sin(glm::radians(-shape.rotation)));
+    ImVec2 p3 = ImRotate(ImVec2(shape.p2.x - center.x, shape.p2.y - center.y), cos(glm::radians(-shape.rotation)), sin(glm::radians(-shape.rotation)));
+    ImVec2 p4 = ImRotate(ImVec2(shape.p2.x - center.x, shape.p1.y - center.y), cos(glm::radians(-shape.rotation)), sin(glm::radians(-shape.rotation)));
+    draw_list->AddQuad(ImVec2(origin.x + p1.x + center.x, origin.y + p1.y + center.y), ImVec2(origin.x + p2.x + center.x, origin.y + p2.y + center.y), ImVec2(origin.x + p3.x + center.x, origin.y + p3.y + center.y), ImVec2(origin.x + p4.x + center.x, origin.y + p4.y + center.y), ImGui::ColorConvertFloat4ToU32(shape.color));
 }

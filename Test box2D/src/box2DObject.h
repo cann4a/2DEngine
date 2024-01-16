@@ -27,7 +27,7 @@ protected:
 class Box: public Box2DObject
 {
 public:
-	void init(b2World* world, const std::string& name, const glm::vec2& position, const glm::vec2& dimensions, const b2BodyType& type, const glm::vec3& color = glm::vec3(1.0))
+	void init(b2World* world, const std::string& name, const glm::vec2& position, const glm::vec2& dimensions, const b2BodyType& type, const float rotation, const glm::vec3& color = glm::vec3(1.0))
 	{
 		b2BodyDef bodyDef;
 		bodyDef.type = type;
@@ -44,13 +44,14 @@ public:
 		fixture = body->CreateFixture(&fixtureDef);
 		setColor(color);
 		setName(name);
+		setRotation(rotation);
 	}
 };
 
 class Wall: public Box2DObject
 {
 public:
-	void init(b2World* world, const std::string& name, const glm::vec2& position, const glm::vec2& dimensions, const b2BodyType& type, const glm::vec3& color = glm::vec3(1.0f))
+	void init(b2World* world, const std::string& name, const glm::vec2& position, const glm::vec2& dimensions, const b2BodyType& type, const float rotation, const glm::vec3& color = glm::vec3(1.0f))
 	{
 		b2BodyDef bodyDef;
 		bodyDef.type = type;
@@ -63,13 +64,15 @@ public:
 		body->CreateFixture(&shape, 0.0f);
 		setColor(color);
 		setName(name);
+		setRotation(rotation);
+
 	}
 };
 
 class Circle : public Box2DObject
 {
 public:
-	void init(b2World* world, const std::string& name, const glm::vec2& position, const float radius, const b2BodyType& type, const glm::vec3& color = glm::vec3(1.0f))
+	void init(b2World* world, const std::string& name, const glm::vec2& position, const float radius, const b2BodyType& type,const  const glm::vec3& color = glm::vec3(1.0f))
 	{
 		b2BodyDef bodyDef;
 		bodyDef.type = type;
