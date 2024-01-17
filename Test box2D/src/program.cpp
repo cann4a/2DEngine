@@ -34,6 +34,12 @@
         b2BodyType type;
         float area; 
         float rotation;
+
+        void reset() {
+            p1 = ImVec2(110.0f, 0.0f);
+            p2 = ImVec2(0.0f, 0.0f);
+            area = -1.0f;
+        }
     } Shape_t ;
 
 // callback for registering the pressed keys
@@ -120,8 +126,8 @@ int main(int argc, char* argv[])
     // configure shaders
     glm::mat4 proj = glm::ortho(0.0f, static_cast<float>(SCREEN_WIDTH), static_cast<float>(SCREEN_HEIGHT),
         0.0f, -1.0f, 0.0f);
-    ResourceManager::getShader("sprite").use().SetInteger("image", 0);
-    ResourceManager::getShader("sprite").use().SetMatrix4("projection", proj);
+    ResourceManager::getShader("sprite").use().setInteger("image", 0);
+    ResourceManager::getShader("sprite").use().setMatrix4("projection", proj);
 
     double last_time = glfwGetTime();
     SpriteRenderer* renderer = new SpriteRenderer(ResourceManager::getShader("sprite"));
@@ -218,7 +224,8 @@ int main(int argc, char* argv[])
         ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
         ImGui::End();
 
-        // canva for drawing shapes 
+        // Canva window
+        // ------------
         ImGui::Begin("Canva", nullptr, canva_window_flags);
 
         // Canvas variables initialization
@@ -252,9 +259,7 @@ int main(int argc, char* argv[])
         ImGui::Checkbox("Enable context menu", &opt_enable_context_menu);
         ImGui::Text("Mouse Left: drag to add lines,\nMouse Right: drag to scroll, click for context menu.");
         ImGui::ColorEdit3("shape color", (float*)&shape_color); ImGui::SameLine();
-        static bool rotate_shape;
         static float rotate_amount;
-        ImGui::Checkbox("Rotate", &rotate_shape); ImGui::SameLine();
         ImGui::InputFloat("Degrees", &rotate_amount, 0.0f, 2 * PI);
         ImGui::Combo("Shape selection", &current_item, items, IM_ARRAYSIZE(items)); ImGui::SameLine();
         // flag for drawing static and dynamic objects in the canva
@@ -292,7 +297,7 @@ int main(int argc, char* argv[])
                 rotate_amount = 0.0f;
                 selection_shape.p1 = mouse_pos_in_canva;
                 selection_shape.p2 = mouse_pos_in_canva;
-                selection_shape.color = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+                selection_shape.color = ImVec4(1.0f, 1.0f, 1.0f, 0.15f);
             }
             else
             {
@@ -323,7 +328,10 @@ int main(int argc, char* argv[])
             {
                 selection_shape.p2 = mouse_pos_in_canva;
                 if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) // left mouse button released
+                {
                     adding_line = false;
+                    selection_shape.area = abs(selection_shape.p1.x - selection_shape.p2.x) * abs(selection_shape.p1.y - selection_shape.p2.y);
+                }
             }
             else
             {
@@ -459,7 +467,10 @@ int main(int argc, char* argv[])
         }
         // draw selection shape if needed and check if a figure is included in the selection box
         if (select_shape)
-            draw_list->AddRect(ImVec2(origin.x + selection_shape.p1.x, origin.y + selection_shape.p1.y), ImVec2(origin.x + selection_shape.p2.x, origin.y + selection_shape.p2.y), ImGui::ColorConvertFloat4ToU32(selection_shape.color));
+            if (selection_shape.area > 10 || selection_shape.area == -1.0f)
+                draw_list->AddRectFilled(ImVec2(origin.x + selection_shape.p1.x, origin.y + selection_shape.p1.y), ImVec2(origin.x + selection_shape.p2.x, origin.y + selection_shape.p2.y), ImGui::ColorConvertFloat4ToU32(selection_shape.color));
+        else
+            selection_shape.reset();
 
         draw_list->PopClipRect();
 
@@ -480,17 +491,17 @@ int main(int argc, char* argv[])
                     case b2_dynamicBody:
                         if (shapes_it->second[n].name == "Box")
                             createBoxObject(origin, shapes_it->second[n]);
-                        if (shapes_it->second[n].name == "Box")
+                        else if (shapes_it->second[n].name == "Box")
                             createBoxObject(origin, shapes_it->second[n]);
-                        if (shapes_it->second[n].name == "Ball")
+                        else if (shapes_it->second[n].name == "Ball")
                             createCircleObject(origin, shapes_it->second[n]);
                         break;
                     case b2_staticBody:
                         if (shapes_it->second[n].name == "Wall")
                             createWallObject(origin, shapes_it->second[n]);
-                        if (shapes_it->second[n].name == "Wall")
+                        else if (shapes_it->second[n].name == "Wall")
                             createWallObject(origin, shapes_it->second[n]);
-                        if (shapes_it->second[n].name == "Ball")
+                        else if (shapes_it->second[n].name == "Ball")
                             createCircleObject(origin, shapes_it->second[n]);
                         break;
                     }
@@ -503,7 +514,8 @@ int main(int argc, char* argv[])
 
         ImGui::End();
 
-        // window for rendering the simulation
+        // Rendering window
+        // ----------------
         ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x, main_viewport->WorkPos.y), ImGuiCond_Once);
         ImGui::SetNextWindowSize(ImVec2(2 * SCREEN_WIDTH / 3, 2 * SCREEN_HEIGHT / 3), ImGuiCond_Once);
         style.WindowPadding = ImVec2(0.0f, 0.0f);
@@ -690,6 +702,7 @@ void saveCanvasFile(const std::string& filePath, const std::map<int,ImVector<Sha
 
 void loadCanvasFile(const std::string& filePath, std::map<int, ImVector<Shape_t>>* shapes)
 {
+    simulation_manager.clearObjects();
     (*shapes).clear();
     std::ifstream infile(filePath, std::ios_base::in);
     std::string buffer;
