@@ -445,10 +445,13 @@ int main(int argc, char* argv[])
         }
 
         // adjust rotation with mousewheel
-        if (io.MouseWheel == 1.0)
-            rotate_amount += 2.5f;
-        else if (io.MouseWheel == -1.0f)
-            rotate_amount -= 2.5f;
+        if (modify_shape == 0)
+        {
+            if (io.MouseWheel == 1.0)
+                rotate_amount += 2.5f;
+            else if (io.MouseWheel == -1.0f)
+                rotate_amount -= 2.5f;
+        }
 
         // draw figures to the canva
         for (shapes_it = shapes.begin(); shapes_it !=shapes.end(); shapes_it++)
@@ -483,6 +486,8 @@ int main(int argc, char* argv[])
                                 selection_shape.p1.y += io.MouseDelta.y;
                                 selection_shape.p2.x += io.MouseDelta.x;
                                 selection_shape.p2.y += io.MouseDelta.y;
+
+                                simulation_manager.m_objects[1][n].setPosition(b2Vec2((shapes_it->second[n].p1.x + abs(shapes_it->second[n].p1.x - shapes_it->second[n].p2.x) / 2.0f) / RENDER_SCALE, (shapes_it->second[n].p1.y + abs(shapes_it->second[n].p1.y - shapes_it->second[n].p2.y) / 2.0f) / RENDER_SCALE));
                             }
                         }
                     }

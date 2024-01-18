@@ -13,13 +13,15 @@ public:
 	glm::vec2 getDimensions() const { return m_dimensions; }
 	glm::vec3 getColor() const { return m_color; }
 	std::string getName() const { return m_name; }
-	void setRotation(float angle) { body->SetTransform(body->GetPosition(), angle); }
+	void setPosition(b2Vec2 position) { body->SetTransform(position, m_rotation); }
+	void setRotation(float angle) { body->SetTransform(body->GetPosition(), angle); m_rotation = angle; }
 	void setColor(glm::vec3 color) { m_color = color; }
 	void setName(const std::string& name) { m_name = name; }
 protected:
 	b2Body* body = nullptr;
 	b2Fixture* fixture = nullptr;
 	glm::vec2 m_dimensions;
+	float m_rotation;
 	glm::vec3 m_color;
 	std::string m_name;
 };
@@ -34,6 +36,7 @@ public:
 		bodyDef.position.Set(position.x, position.y);
 		body = world->CreateBody(&bodyDef);
 		m_dimensions = dimensions;
+		m_rotation = 0.0f;
 
 		b2PolygonShape shape;
 		shape.SetAsBox(dimensions.x / 2, dimensions.y / 2);
@@ -58,6 +61,7 @@ public:
 		bodyDef.position.Set(position.x, position.y);
 		body = world->CreateBody(&bodyDef);
 		m_dimensions = dimensions;
+		m_rotation = 0.0f;
 
 		b2PolygonShape shape;
 		shape.SetAsBox(dimensions.x / 2, dimensions.y / 2);
@@ -80,6 +84,7 @@ public:
 		body = world->CreateBody(&bodyDef);
 		m_radius = radius;
 		m_dimensions = glm::vec2(2 * m_radius , 2 * m_radius);
+		m_rotation = 0.0f;
 
 		b2CircleShape shape;
 		shape.m_p.Set(0.0f, 0.0f);

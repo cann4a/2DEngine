@@ -21,11 +21,6 @@ public:
 
 	std::map<int, std::vector<Box2DObject>> m_objects;
 
-	//std::vector<Box> m_boxes;
-	int boxNumber = 20;
-	//std::vector<Wall> m_walls;
-	//std::vector<Circle> m_circles;
-
 	SimulationManager(const float RENDER_SCALE, const unsigned int SCREEN_WIDTH, const unsigned int SCREEN_HEIGHT);
 	~SimulationManager();
 	void setGravity(const b2Vec2 gravity);
