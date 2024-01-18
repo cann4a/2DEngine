@@ -232,6 +232,7 @@ int main(int argc, char* argv[])
         static std::map<int, ImVector<Shape_t>> shapes;
         std::map<int, ImVector<Shape_t>>::iterator shapes_it;
         static Shape_t selection_shape;
+        static bool selection_shape_active = false;
         static ImVec2 scrolling(0.0f, 0.0f);
         static bool opt_enable_grid = true;
         static bool opt_enable_context_menu = true;
@@ -267,7 +268,10 @@ int main(int argc, char* argv[])
         ImGui::RadioButton("dynamic", &is_object_static, 0); ImGui::SameLine();
         ImGui::RadioButton("static", &is_object_static, 1);
         static bool select_shape;
-        ImGui::Checkbox("Select shape", &select_shape);
+        static int modify_shape;
+        ImGui::Checkbox("Select shape", &select_shape); ImGui::SameLine();
+        ImGui::RadioButton("Rotate", &modify_shape, 0); ImGui::SameLine();
+        ImGui::RadioButton("Move", &modify_shape, 1);
 
         // Using InvisibleButton() as a convenience 1) it will advance the layout cursor and 2) allows us to use IsItemHovered()/IsItemActive()
         ImVec2 canva_p0 = ImGui::GetCursorScreenPos();      // ImDrawList API uses screen coordinates!
@@ -294,10 +298,14 @@ int main(int argc, char* argv[])
         {
             if (select_shape)
             {
-                rotate_amount = 0.0f;
-                selection_shape.p1 = mouse_pos_in_canva;
-                selection_shape.p2 = mouse_pos_in_canva;
-                selection_shape.color = ImVec4(1.0f, 1.0f, 1.0f, 0.15f);
+                if (!isPointInGivenArea(selection_shape, mouse_pos_in_canva))
+                {
+                    rotate_amount = 0.0f;
+                    selection_shape.p1 = mouse_pos_in_canva;
+                    selection_shape.p2 = mouse_pos_in_canva;
+                    selection_shape.color = ImVec4(1.0f, 1.0f, 1.0f, 0.15f);
+                    selection_shape_active = false;
+                }
             }
             else
             {
@@ -326,11 +334,13 @@ int main(int argc, char* argv[])
         {
             if (select_shape)
             {
-                selection_shape.p2 = mouse_pos_in_canva;
+                if (!selection_shape_active)
+                    selection_shape.p2 = mouse_pos_in_canva;
                 if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) // left mouse button released
                 {
                     adding_line = false;
                     selection_shape.area = abs(selection_shape.p1.x - selection_shape.p2.x) * abs(selection_shape.p1.y - selection_shape.p2.y);
+                    selection_shape_active = true;
                 }
             }
             else
@@ -433,6 +443,13 @@ int main(int argc, char* argv[])
             draw_list->AddLine(ImVec2(origin.x - 10.0f, origin.y), ImVec2(origin.x + 10.0f, origin.y), IM_COL32(255, 0, 0, 255));
             draw_list->AddLine(ImVec2(origin.x, origin.y - 10.0f), ImVec2(origin.x, origin.y + 10.0f), IM_COL32(255, 0, 0, 255));
         }
+
+        // adjust rotation with mousewheel
+        if (io.MouseWheel == 1.0)
+            rotate_amount += 2.5f;
+        else if (io.MouseWheel == -1.0f)
+            rotate_amount -= 2.5f;
+
         // draw figures to the canva
         for (shapes_it = shapes.begin(); shapes_it !=shapes.end(); shapes_it++)
         {
@@ -444,18 +461,30 @@ int main(int argc, char* argv[])
                     draw_list->AddLine(ImVec2(origin.x + shapes[0][n].p1.x, origin.y + shapes[0][n].p1.y), ImVec2(origin.x + shapes[0][n].p2.x, origin.y + shapes[0][n].p2.y), ImGui::ColorConvertFloat4ToU32(shapes[0][n].color), 2.0f);
                     break;
                 case 1:
-                    if (select_shape && isPointInGivenArea(selection_shape, shapes_it->second[n].p1) && isPointInGivenArea(selection_shape, shapes_it->second[n].p2))
+                    if (select_shape && isPointInGivenArea(selection_shape, shapes_it->second[n].p1) && isPointInGivenArea(selection_shape, shapes_it->second[n].p2) && selection_shape_active)
                     {
-                        shapes[1][n].rotation = rotate_amount;
+                        if (modify_shape == 0)
+                        {
+                            shapes_it->second[n].rotation = rotate_amount;
 
-                        // adjust rotation with mousewheel
-                        if (io.MouseWheel == 1.0)
-                            rotate_amount += 2.5f;
-                        else if (io.MouseWheel == -1.0f)
-                            rotate_amount -= 2.5f;
+                            // save rotation to simulation
+                            simulation_manager.m_objects[1][n].setRotation(glm::radians(-rotate_amount));
+                        }
+                        else if (modify_shape == 1)
+                        {
+                            if (is_active && ImGui::IsMouseDragging(ImGuiMouseButton_Left, mouse_threshold_for_pan))
+                            {
+                                shapes_it->second[n].p1.x += io.MouseDelta.x;
+                                shapes_it->second[n].p1.y += io.MouseDelta.y;
+                                shapes_it->second[n].p2.x += io.MouseDelta.x;
+                                shapes_it->second[n].p2.y += io.MouseDelta.y;
 
-                        // save rotation to simulation
-                        simulation_manager.m_objects[1][n].setRotation(glm::radians(-rotate_amount));
+                                selection_shape.p1.x += io.MouseDelta.x;
+                                selection_shape.p1.y += io.MouseDelta.y;
+                                selection_shape.p2.x += io.MouseDelta.x;
+                                selection_shape.p2.y += io.MouseDelta.y;
+                            }
+                        }
                     }
                     drawRotatedQuad(draw_list, origin, shapes[1][n]);
                     break;
@@ -465,7 +494,7 @@ int main(int argc, char* argv[])
                 }
             }
         }
-        // draw selection shape if needed and check if a figure is included in the selection box
+        // draw selection shape if needed
         if (select_shape)
             if (selection_shape.area > 10 || selection_shape.area == -1.0f)
                 draw_list->AddRectFilled(ImVec2(origin.x + selection_shape.p1.x, origin.y + selection_shape.p1.y), ImVec2(origin.x + selection_shape.p2.x, origin.y + selection_shape.p2.y), ImGui::ColorConvertFloat4ToU32(selection_shape.color));
