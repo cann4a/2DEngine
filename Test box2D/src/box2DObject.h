@@ -21,7 +21,7 @@ protected:
 	b2Body* body = nullptr;
 	b2Fixture* fixture = nullptr;
 	glm::vec2 m_dimensions;
-	float m_rotation;
+	float m_rotation{};
 	glm::vec3 m_color;
 	std::string m_name;
 };

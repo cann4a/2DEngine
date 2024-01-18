@@ -36,7 +36,7 @@
         float rotation;
 
         void reset() {
-            p1 = ImVec2(110.0f, 0.0f);
+            p1 = ImVec2(0.0f, 0.0f);
             p2 = ImVec2(0.0f, 0.0f);
             area = -1.0f;
         }
@@ -229,15 +229,16 @@ int main(int argc, char* argv[])
         ImGui::Begin("Canva", nullptr, canva_window_flags);
 
         // Canvas variables initialization
-        static std::map<int, ImVector<Shape_t>> shapes;
-        std::map<int, ImVector<Shape_t>>::iterator shapes_it;
-        static Shape_t selection_shape;
-        static bool selection_shape_active = false;
-        static ImVec2 scrolling(0.0f, 0.0f);
-        static bool opt_enable_grid = true;
-        static bool opt_enable_context_menu = true;
-        static bool adding_line = false;
-        static int current_item = 0;
+        static std::map<int, ImVector<Shape_t>> shapes; // container for the shapes in the canva
+        std::map<int, ImVector<Shape_t>>::iterator shapes_it; // iterator for iterating through the shapes in the canva
+        static Shape_t selection_shape; // rectangle for selecting other figures
+        static bool selection_shape_active = false; // set to true when the selection shape has been put on the canva
+        static bool show_select_shape = true; // when moving we want to hide the selecting rectangle
+        static ImVec2 scrolling(0.0f, 0.0f); // to track mouse movement when moving a figure
+        static bool opt_enable_grid = true; // enable the grid 
+        static bool opt_enable_context_menu = true; // enable menu for deleting figures
+        static bool adding_line = false; // for seeing if we are adding a figure to the canva
+        static int current_item = 0; // 0: line, 1: rectangle, 2: circle
         const char* items[] = { "Line", "Rectangle", "Circle" };
 
         // Menu
@@ -300,7 +301,7 @@ int main(int argc, char* argv[])
             {
                 if (!isPointInGivenArea(selection_shape, mouse_pos_in_canva))
                 {
-                    rotate_amount = 0.0f;
+                    rotate_amount = 0.0f; // reset rotation amount
                     selection_shape.p1 = mouse_pos_in_canva;
                     selection_shape.p2 = mouse_pos_in_canva;
                     selection_shape.color = ImVec4(1.0f, 1.0f, 1.0f, 0.15f);
@@ -477,6 +478,7 @@ int main(int argc, char* argv[])
                         {
                             if (is_active && ImGui::IsMouseDragging(ImGuiMouseButton_Left, mouse_threshold_for_pan))
                             {
+                                show_select_shape = false;
                                 shapes_it->second[n].p1.x += io.MouseDelta.x;
                                 shapes_it->second[n].p1.y += io.MouseDelta.y;
                                 shapes_it->second[n].p2.x += io.MouseDelta.x;
@@ -489,6 +491,8 @@ int main(int argc, char* argv[])
 
                                 simulation_manager.m_objects[1][n].setPosition(b2Vec2((shapes_it->second[n].p1.x + abs(shapes_it->second[n].p1.x - shapes_it->second[n].p2.x) / 2.0f) / RENDER_SCALE, (shapes_it->second[n].p1.y + abs(shapes_it->second[n].p1.y - shapes_it->second[n].p2.y) / 2.0f) / RENDER_SCALE));
                             }
+                            else
+                                show_select_shape = true;
                         }
                     }
                     drawRotatedQuad(draw_list, origin, shapes[1][n]);
@@ -501,8 +505,12 @@ int main(int argc, char* argv[])
         }
         // draw selection shape if needed
         if (select_shape)
-            if (selection_shape.area > 10 || selection_shape.area == -1.0f)
+        {
+            if ((selection_shape.area > 10 || selection_shape.area == -1.0f) && show_select_shape)
                 draw_list->AddRectFilled(ImVec2(origin.x + selection_shape.p1.x, origin.y + selection_shape.p1.y), ImVec2(origin.x + selection_shape.p2.x, origin.y + selection_shape.p2.y), ImGui::ColorConvertFloat4ToU32(selection_shape.color));
+            else if (!(selection_shape.area > 10 || selection_shape.area == -1.0f))
+                selection_shape.reset();
+        }
         else
             selection_shape.reset();
 
