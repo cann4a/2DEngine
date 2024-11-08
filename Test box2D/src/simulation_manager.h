@@ -8,13 +8,22 @@
 #include "box2DObject.h"
 #include <random>
 
+enum class SimulationState
+{
+	PLAY,
+	PAUSE,
+	STOP
+};
+
 class SimulationManager
 {
 public:
 
 	bool play = false;
-	bool reset = false;
+	bool stop = false;
 	bool simulate = true;
+
+	SimulationState simulation_state;
 
 	b2World* m_world;
 	bool gravity_on;

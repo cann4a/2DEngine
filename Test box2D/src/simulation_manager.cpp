@@ -15,6 +15,8 @@ SimulationManager::SimulationManager(const float RENDER_SCALE, const unsigned in
     gravity_on = true;
 	m_gravity = b2Vec2(0.0f, 10.0f);
 	m_world = new b2World(m_gravity);
+
+    simulation_state = SimulationState::STOP;
 }
 void SimulationManager::setGravity(const b2Vec2 gravity) 
 {

@@ -35,7 +35,8 @@
         float area; 
         float rotation;
 
-        void reset() {
+        void reset()
+        {
             p1 = ImVec2(0.0f, 0.0f);
             p2 = ImVec2(0.0f, 0.0f);
             area = -1.0f;
@@ -201,18 +202,21 @@ int main(int argc, char* argv[])
         ImGui::Begin("Control");
         if (ImGui::Button("Play")) 
         {
+            simulation_manager.simulation_state = SimulationState::PLAY;
             simulation_manager.play = true;
             simulation_manager.simulate = true;
         }
         ImGui::SameLine();
-        if (ImGui::Button("Stop"))
+        if (ImGui::Button("Pause"))
         {
+            simulation_manager.simulation_state = SimulationState::PAUSE;
             simulation_manager.simulate = false;
         }
        
         if (ImGui::Button("Reset")) 
         {
-            simulation_manager.reset = true;
+            simulation_manager.simulation_state = SimulationState::STOP;
+            simulation_manager.stop = true;
             simulation_manager.play = false;
         }
         ImGui::SameLine(ImGui::GetWindowWidth() - 130.0f);
@@ -563,7 +567,7 @@ int main(int argc, char* argv[])
         style.WindowPadding = ImVec2(0.0f, 0.0f);
 
         ImGui::Begin("Rendering", nullptr, rendering_window_flags);
-        if (simulation_manager.reset)
+        if (simulation_manager.stop)
         {
             simulation_manager.clearObjects();
 
@@ -592,7 +596,7 @@ int main(int argc, char* argv[])
                     }
                 }
             }
-            simulation_manager.reset = false;
+            simulation_manager.stop = false;
         }
         if (simulation_manager.play)
         {
